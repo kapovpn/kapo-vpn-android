@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Disabled "Activate" state: dark pill with a faint cyan edge (was flat grey).
+     Becomes the cyan->magenta gradient (bg_signin_ready) once the code is valid. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#0F1724"/>
+    <corners android:radius="16dp"/>
+</shape>

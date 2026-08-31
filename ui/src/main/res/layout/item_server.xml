@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/serverRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="14dp"
+    android:paddingBottom="14dp"
+    android:background="@drawable/bg_server_row"
+    android:clickable="true"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/railBg"
+        android:layout_width="3dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:background="@color/border_hi"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <View
+        android:id="@+id/activeBar"
+        android:layout_width="3dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_gradient_vc"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:id="@+id/tvFlag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="22sp"
+        android:layout_marginStart="10dp"
+        app:layout_constraintStart_toEndOf="@id/railBg"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <LinearLayout
+        android:id="@+id/locationInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginStart="12dp"
+        app:layout_constraintStart_toEndOf="@id/tvFlag"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/pingLayout">
+
+        <TextView
+            android:id="@+id/tvCity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvCountry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_muted"
+            android:textSize="9sp"
+            android:fontFamily="sans-serif-rounded"
+            android:layout_marginTop="2dp"/>
+
+        <TextView
+            android:id="@+id/tvChain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="YOU &#x2500;&#x2500;&#x25b6; AWG &#x2500;&#x2500;&#x25b6; NET"
+            android:textColor="@color/teal_ink"
+            android:textSize="8sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginTop="5dp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tvComingSoon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="COMING SOON"
+            android:textColor="@color/text_muted"
+            android:textSize="7sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.14"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:background="@drawable/bg_coming_soon"
+            android:layout_marginTop="5dp"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/pingLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="end"
+        android:layout_marginEnd="10dp"
+        app:layout_constraintEnd_toStartOf="@id/ivCheck"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <TextView
+            android:id="@+id/tvPing"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"/>
+
+        <ProgressBar
+            android:id="@+id/loadBar"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="46dp"
+            android:layout_height="3dp"
+            android:max="100"
+            android:layout_marginTop="5dp"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/ivCheck"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/ic_check"
+        android:tint="@color/green"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,34 @@
+{
+  "comment": "Interface names",
+  "names": [
+    {
+      "names": [
+        { "name": "awg0" },
+        { "name": "awg1" },
+        { "name": "awg2" },
+        { "name": "awg3" },
+        { "name": "awg4" },
+        { "name": "awg5" },
+        { "name": "awg6" },
+        { "name": "awg7" },
+        { "name": "awg8" },
+        { "name": "awg9" },
+        { "name": "awg10" },
+        { "name": "awg11" }
+      ],
+      "checked": [
+        { "checked":  true },
+        { "checked":  false },
+        { "checked":  true },
+        { "checked":  false },
+        { "checked":  true },
+        { "checked":  false },
+        { "checked":  true },
+        { "checked":  false },
+        { "checked":  true },
+        { "checked":  false },
+        { "checked":  true }
+      ]
+    }
+  ]
+}

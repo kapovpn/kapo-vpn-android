@@ -1,0 +1,31 @@
+# KAPO VPN — example Gradle properties for building from source.
+#
+# Copy this file to `gradle.properties` and fill in your own signing values.
+# The real `gradle.properties` is gitignored and must NEVER be committed — it
+# holds your keystore passwords.
+#
+# To build an UNSIGNED debug APK you don't need any of the KAPO_* values; they
+# are only required for a signed release build.
+
+kapovpnVersionCode=1
+kapovpnVersionName=1.0.0
+kapovpnPackageName=com.kapovpn.app
+
+# ---- Signing (release only) — provide your OWN keystore ----
+# Generate one with:
+#   keytool -genkey -v -keystore my-release.jks -keyalg RSA -keysize 2048 \
+#           -validity 10000 -alias myalias
+KAPO_STORE_FILE=/absolute/path/to/your-release.jks
+KAPO_STORE_PASSWORD=your-store-password
+KAPO_KEY_ALIAS=your-alias
+KAPO_KEY_PASSWORD=your-key-password
+
+# ---- Standard Android Gradle build flags (safe to keep as-is) ----
+org.gradle.parallel=true
+org.gradle.configureondemand=true
+org.gradle.caching=true
+kotlin.incremental=true
+android.useAndroidX=true
+org.gradle.jvmargs=-Xmx1536m
+android.nonTransitiveRClass=true
+android.nonFinalResIds=true

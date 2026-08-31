@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="22dp"
+    android:paddingEnd="22dp"
+    android:paddingTop="15dp"
+    android:paddingBottom="15dp"
+    android:background="@drawable/bg_bottom_border"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvToggleName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Toggle Name"
+            android:textColor="@color/text"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvToggleDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Toggle description"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp"
+            android:fontFamily="sans-serif-rounded"
+            android:layout_marginTop="3dp"/>
+    </LinearLayout>
+
+    <!-- 3D toggle switch -->
+    <FrameLayout
+        android:id="@+id/toggleSwitch"
+        android:layout_width="48dp"
+        android:layout_height="26dp"
+        android:background="@drawable/bg_toggle_off">
+
+        <View
+            android:id="@+id/toggleThumb"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_toggle_thumb"/>
+    </FrameLayout>
+
+</LinearLayout>

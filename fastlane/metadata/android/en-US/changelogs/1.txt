@@ -1,0 +1,5 @@
+First public release of KAPO VPN.
+- Anonymous code sign-in (no email, no account)
+- On-device WireGuard key generation
+- Multi-hop (2 and 3 countries), obfuscated AmneziaWG
+- Ad and tracker blocking, up to 5 devices per code

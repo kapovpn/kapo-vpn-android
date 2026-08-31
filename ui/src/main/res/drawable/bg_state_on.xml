@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- KAPO Cyber background - CONNECTED. Same base, brighter cyan + magenta
+     energy so the whole screen lifts when the tunnel comes up. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0E1526"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.18" android:centerY="0.06"
+                android:gradientRadius="85%p"
+                android:startColor="#5C00E5FF" android:endColor="#0000E5FF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.92" android:centerY="0.16"
+                android:gradientRadius="72%p"
+                android:startColor="#479B6BFF" android:endColor="#009B6BFF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.80" android:centerY="1.0"
+                android:gradientRadius="66%p"
+                android:startColor="#40FF3D95" android:endColor="#00FF3D95"/>
+        </shape>
+    </item>
+</layer-list>

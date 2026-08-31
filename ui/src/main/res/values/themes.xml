@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.KapoVPN" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#3CE68C</item>
+        <item name="colorPrimaryDark">#16181E</item>
+        <item name="colorAccent">#FFB86B</item>
+        <item name="android:windowBackground">#05060C</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:fontFamily">sans-serif-rounded</item>
+    </style>
+    <style name="NavTextActive" parent="@android:style/TextAppearance.Small">
+        <item name="android:textSize">9sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="NavTextInactive" parent="@android:style/TextAppearance.Small">
+        <item name="android:textSize">9sp</item>
+    </style>
+</resources>

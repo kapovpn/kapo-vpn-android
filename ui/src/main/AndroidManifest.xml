@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:installLocation="internalOnly">
+
+    <!-- KAPO signs in with a typed code and never scans QR, imports config
+         files, or draws overlays, so the base app's CAMERA / storage / overlay
+         permissions are stripped for a clean privacy-VPN data-safety profile.
+         tools:node="remove" also drops them if a bundled library re-declares
+         them. NOTE: if Android 14 always-on reconnect ever needs it, re-add
+         SYSTEM_ALERT_WINDOW. -->
+    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" tools:node="remove" />
+    <uses-feature android:name="android.hardware.camera" tools:node="remove" />
+
+    <permission
+        android:name="${applicationId}.permission.CONTROL_TUNNELS"
+        android:description="@string/permission_description"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/permission_label"
+        android:protectionLevel="dangerous" />
+
+    <application
+        android:name=".Application"
+        android:allowBackup="false"
+        android:banner="@mipmap/banner"
+        android:enableOnBackInvokedCallback="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.KapoVPN">
+
+        <activity
+            android:name=".activity.TunnelToggleActivity"
+            android:excludeFromRecents="true"
+            android:theme="@style/NoBackgroundTheme" />
+
+        <activity
+            android:name=".ui.NotificationsActivity"
+            android:theme="@style/Theme.KapoVPN"
+            android:exported="false"/>
+        <activity
+            android:name=".ui.LoginActivity" android:theme="@style/Theme.KapoVPN"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ui.MainActivity" android:theme="@style/Theme.KapoVPN" android:exported="false"/>
+
+        <activity
+            android:name=".activity.TvMainActivity"
+            android:exported="true"
+            android:theme="@style/TvTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".activity.SettingsActivity"
+            android:label="@string/settings"
+            android:parentActivityName=".ui.LoginActivity" />
+
+        <activity
+            android:name=".activity.TunnelCreatorActivity"
+            android:label="@string/create_activity_title"
+            android:parentActivityName=".ui.LoginActivity" />
+
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="screenOrientation" />
+
+        <activity
+            android:name=".activity.LogViewerActivity"
+            android:exported="false"
+            android:label="@string/log_viewer_title">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name=".activity.LogViewerActivity$ExportedLogContentProvider"
+            android:authorities="${applicationId}.exported-log"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <receiver
+            android:name=".BootShutdownReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".model.TunnelManager$IntentReceiver"
+            android:exported="true"
+            android:permission="${applicationId}.permission.CONTROL_TUNNELS">
+            <intent-filter>
+                <action android:name="com.kapovpn.app.action.REFRESH_TUNNEL_STATES" />
+                <action android:name="com.kapovpn.app.action.SET_TUNNEL_UP" />
+                <action android:name="com.kapovpn.app.action.SET_TUNNEL_DOWN" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".QuickTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="false" />
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+
+        <service
+            android:name="org.amnezia.awg.backend.GoBackend$VpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
+                android:value="true" />
+        </service>
+
+        <meta-data
+            android:name="android.content.APP_RESTRICTIONS"
+            android:resource="@xml/app_restrictions" />
+
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+</manifest>
+
+

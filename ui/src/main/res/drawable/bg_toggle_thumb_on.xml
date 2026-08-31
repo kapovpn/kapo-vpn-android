@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <!-- White in both states so the thumb stays crisp against the gradient
+         "on" track instead of blending into its cyan end. -->
+    <solid android:color="#FFFFFF"/>
+</shape>

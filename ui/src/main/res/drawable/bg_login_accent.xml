@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The thin amber light bar across the top of the access card. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="0"
+        android:startColor="#007FF0FF"
+        android:centerColor="#7FF0FF"
+        android:endColor="#00F5A356"/>
+    <corners android:topLeftRadius="16dp" android:topRightRadius="16dp"/>
+</shape>

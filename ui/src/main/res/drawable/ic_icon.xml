@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="200dp"
+    android:width="200dp"
+    android:tint="?attr/colorControlNormal"
+    android:viewportHeight="200"
+    android:viewportWidth="200">
+
+    <!-- Shield shape -->
+    <path
+        android:fillColor="#1422C55E"
+        android:strokeColor="#22C55E"
+        android:strokeWidth="6"
+        android:pathData="M100,18 L172,45 L172,110 L100,182 L28,110 L28,45 Z"/>
+
+    <!-- K vertical bar -->
+    <path
+        android:fillColor="#ffffffff"
+        android:pathData="M80,68 L80,132 L92,132 L92,68 Z"/>
+
+    <!-- K upper arm -->
+    <path
+        android:fillColor="#ffffffff"
+        android:pathData="M92,100 L120,68 L108,68 L80,100 Z"/>
+
+    <!-- K lower arm -->
+    <path
+        android:fillColor="#ffffffff"
+        android:pathData="M92,100 L120,132 L108,132 L80,100 Z"/>
+
+    <!-- Green dot accent -->
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M118,94 A8,8 0 1 1 118,106 A8,8 0 1 1 118,94 Z"/>
+
+</vector>

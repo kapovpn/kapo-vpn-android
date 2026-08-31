@@ -1,0 +1,33 @@
+/.gradle/
+/.idea/*.xml
+/.idea/caches/
+/.idea/dictionaries/
+/.idea/libraries/
+/captures/
+/local.properties
+.DS_Store
+.cxx/
+Thumbs.db
+build/
+*.apk
+*.class
+*.dex
+*.iml
+*.jks
+maint/
+
+# --- junk that must never be committed or deployed ---
+.fuse_hidden*
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+build_log.txt
+*.log
+# one-off build-fix scripts (deleted; keep them out)
+fix_makefile.py
+fixmake.py
+fixmake2.py
+fixgradle.py
+
+gradle.properties

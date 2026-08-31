@@ -1,0 +1,23 @@
+KAPO VPN is a privacy-first VPN with no email and no account. You buy an
+anonymous access code with cryptocurrency at kapovpn.com, enter it in the app,
+and connect. There is no sign-up, no name, and nothing tying the service to you.
+
+Your WireGuard keys are generated on your device and never leave it. The app is
+open source so you can verify exactly what it does.
+
+Features:
+* Truly anonymous - an access code is the only credential
+* On-device key generation - your private key never leaves the phone
+* Multi-hop routing through 2 or 3 countries
+* Traffic obfuscation (AmneziaWG) that works where ordinary VPNs are blocked
+* No activity logs - servers keep operational state in RAM
+* Built-in ad and tracker blocking
+* Up to 5 devices per code
+
+KAPO is built on AmneziaWG, an obfuscated fork of the WireGuard protocol.
+
+Privacy: the app sends only your anonymous code, this device's public key, and a
+device identifier to the control plane. No browsing history, no personal data.
+
+Note: KAPO requires an access code purchased at kapovpn.com. The app itself does
+not sell anything.

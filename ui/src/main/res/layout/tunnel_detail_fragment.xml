@@ -1,0 +1,720 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="org.amnezia.awg.backend.Tunnel.State" />
+
+        <import type="org.amnezia.awg.util.ClipboardUtils" />
+
+        <variable
+            name="fragment"
+            type="org.amnezia.awg.fragment.TunnelDetailFragment" />
+
+        <variable
+            name="tunnel"
+            type="org.amnezia.awg.model.ObservableTunnel" />
+
+        <variable
+            name="config"
+            type="org.amnezia.awg.config.Config" />
+    </data>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?attr/colorSurface"
+        android:clickable="true"
+        android:focusable="true">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/tunnel_detail_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/interface_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/interface_title"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <org.amnezia.awg.widget.ToggleSwitch
+                        android:id="@+id/tunnel_switch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:nextFocusDown="@id/interface_name_text"
+                        android:nextFocusForward="@id/interface_name_text"
+                        app:checked="@{tunnel.state == State.UP}"
+                        app:layout_constraintBaseline_toBottomOf="@+id/interface_title"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:onBeforeCheckedChanged="@{fragment::setTunnelState}" />
+
+                    <TextView
+                        android:id="@+id/interface_name_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/interface_name_text"
+                        android:text="@string/name"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/interface_title" />
+
+                    <TextView
+                        android:id="@+id/interface_name_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/name"
+                        android:nextFocusUp="@id/tunnel_switch"
+                        android:nextFocusDown="@id/public_key_text"
+                        android:nextFocusForward="@id/public_key_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{tunnel.name}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/interface_name_label"
+                        tools:text="awg0" />
+
+                    <TextView
+                        android:id="@+id/public_key_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/public_key_text"
+                        android:text="@string/public_key"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/interface_name_text" />
+
+                    <TextView
+                        android:id="@+id/public_key_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/public_key"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:nextFocusUp="@id/interface_name_text"
+                        android:nextFocusDown="@id/addresses_text"
+                        android:nextFocusForward="@id/addresses_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:singleLine="true"
+                        android:text="@{config.interface.keyPair.publicKey.toBase64}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/public_key_label"
+                        tools:text="wOs2eguFEohqIZxlSJ1CAT9584tc6ejj9hfGFsoBVkA=" />
+
+                    <TextView
+                        android:id="@+id/addresses_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/addresses_text"
+                        android:text="@string/addresses"
+                        android:visibility="@{config.interface.addresses.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/public_key_text" />
+
+                    <TextView
+                        android:id="@+id/addresses_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/addresses"
+                        android:nextFocusUp="@id/public_key_text"
+                        android:nextFocusDown="@id/dns_servers_text"
+                        android:nextFocusForward="@id/dns_servers_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.addresses}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.addresses.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/addresses_label"
+                        tools:text="fc00:bbbb:bbbb:bb11::3:368b/128" />
+
+                    <TextView
+                        android:id="@+id/dns_servers_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/dns_servers_text"
+                        android:text="@string/dns_servers"
+                        android:visibility="@{config.interface.dnsServers.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/addresses_text" />
+
+                    <TextView
+                        android:id="@+id/dns_servers_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/dns_servers"
+                        android:nextFocusUp="@id/addresses_text"
+                        android:nextFocusDown="@id/dns_search_domains_text"
+                        android:nextFocusForward="@id/dns_search_domains_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.dnsServers}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.dnsServers.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/dns_servers_label"
+                        tools:text="8.8.8.8, 8.8.4.4" />
+
+                    <TextView
+                        android:id="@+id/dns_search_domains_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/dns_search_domain_text"
+                        android:text="@string/dns_search_domains"
+                        android:visibility="@{config.interface.dnsSearchDomains.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/dns_servers_text" />
+
+                    <TextView
+                        android:id="@+id/dns_search_domains_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/dns_search_domains"
+                        android:nextFocusUp="@id/dns_servers_text"
+                        android:nextFocusDown="@id/listen_port_text"
+                        android:nextFocusForward="@id/listen_port_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.dnsSearchDomains}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.dnsSearchDomains.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/dns_search_domains_label"
+                        tools:text="zx2c4.com" />
+
+                    <TextView
+                        android:id="@+id/listen_port_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/listen_port_text"
+                        android:text="@string/listen_port"
+                        android:visibility="@{!config.interface.listenPort.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintEnd_toStartOf="@id/mtu_label"
+                        app:layout_constraintHorizontal_weight="0.5"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/dns_search_domains_text" />
+
+                    <TextView
+                        android:id="@+id/listen_port_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/listen_port"
+                        android:nextFocusRight="@id/mtu_text"
+                        android:nextFocusUp="@id/dns_search_domains_text"
+                        android:nextFocusDown="@id/applications_text"
+                        android:nextFocusForward="@id/mtu_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.listenPort}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.listenPort.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintEnd_toStartOf="@id/mtu_label"
+                        app:layout_constraintHorizontal_weight="0.5"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/listen_port_label"
+                        tools:text="51820" />
+
+                    <TextView
+                        android:id="@+id/mtu_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/mtu_text"
+                        android:text="@string/mtu"
+                        android:visibility="@{!config.interface.mtu.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_weight="0.5"
+                        app:layout_constraintLeft_toRightOf="@id/listen_port_label"
+                        app:layout_constraintStart_toEndOf="@id/listen_port_label"
+                        app:layout_constraintTop_toBottomOf="@id/dns_search_domains_text" />
+
+                    <TextView
+                        android:id="@+id/mtu_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/mtu"
+                        android:nextFocusLeft="@id/listen_port_text"
+                        android:nextFocusUp="@id/dns_servers_text"
+                        android:nextFocusForward="@id/applications_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.mtu}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.mtu.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintHorizontal_weight="0.5"
+                        app:layout_constraintStart_toEndOf="@id/listen_port_label"
+                        app:layout_constraintStart_toStartOf="@+id/mtu_label"
+                        app:layout_constraintTop_toBottomOf="@+id/mtu_label"
+                        tools:text="1500" />
+
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/listen_port_mtu_barrier"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:barrierDirection="bottom"
+                        app:constraint_referenced_ids="listen_port_text,mtu_text" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_count_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/junk_packet_count_text"
+                        android:text="@string/junk_packet_count"
+                        android:visibility="@{!config.interface.junkPacketCount.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/listen_port_mtu_barrier" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_count_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.junkPacketCount}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.junkPacketCount.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_count_label"
+                        tools:text="3" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_min_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/junk_packet_min_size_text"
+                        android:text="@string/junk_packet_min_size"
+                        android:visibility="@{!config.interface.junkPacketMinSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_count_text" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_min_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.junkPacketMinSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.junkPacketMinSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_min_size_label"
+                        tools:text="10" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_max_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/junk_packet_max_size_text"
+                        android:text="@string/junk_packet_max_size"
+                        android:visibility="@{!config.interface.junkPacketMaxSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_min_size_text" />
+
+                    <TextView
+                        android:id="@+id/junk_packet_max_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.junkPacketMaxSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.junkPacketMaxSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_max_size_label"
+                        tools:text="30" />
+
+                    <TextView
+                        android:id="@+id/init_packet_junk_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/init_packet_junk_size_text"
+                        android:text="@string/init_packet_junk_size"
+                        android:visibility="@{!config.interface.initPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/junk_packet_max_size_text" />
+
+                    <TextView
+                        android:id="@+id/init_packet_junk_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.initPacketJunkSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.initPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/init_packet_junk_size_label"
+                        tools:text="15" />
+
+                    <TextView
+                        android:id="@+id/response_packet_junk_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/response_packet_junk_size_text"
+                        android:text="@string/response_packet_junk_size"
+                        android:visibility="@{!config.interface.responsePacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/init_packet_junk_size_text" />
+
+                    <TextView
+                        android:id="@+id/response_packet_junk_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.responsePacketJunkSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.responsePacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/response_packet_junk_size_label"
+                        tools:text="18" />
+
+                    <TextView
+                        android:id="@+id/cookie_reply_packet_junk_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/cookie_reply_packet_junk_size_text"
+                        android:text="@string/cookie_reply_packet_junk_size"
+                        android:visibility="@{!config.interface.cookieReplyPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/response_packet_junk_size_text" />
+
+                    <TextView
+                        android:id="@+id/cookie_reply_packet_junk_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.cookieReplyPacketJunkSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.cookieReplyPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/cookie_reply_packet_junk_size_label"
+                        tools:text="20" />
+
+                    <TextView
+                        android:id="@+id/transport_packet_junk_size_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/transport_packet_junk_size_text"
+                        android:text="@string/transport_packet_junk_size"
+                        android:visibility="@{!config.interface.transportPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/cookie_reply_packet_junk_size_text" />
+
+                    <TextView
+                        android:id="@+id/transport_packet_junk_size_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.transportPacketJunkSize}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.transportPacketJunkSize.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/transport_packet_junk_size_label"
+                        tools:text="22" />
+
+                    <TextView
+                        android:id="@+id/init_packet_magic_header_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/init_packet_magic_header_text"
+                        android:text="@string/init_packet_magic_header"
+                        android:visibility="@{!config.interface.initPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/transport_packet_junk_size_text" />
+
+                    <TextView
+                        android:id="@+id/init_packet_magic_header_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.initPacketMagicHeader}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.initPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/init_packet_magic_header_label"
+                        tools:text="1020325451" />
+
+                    <TextView
+                        android:id="@+id/response_packet_magic_header_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/response_packet_magic_header_text"
+                        android:text="@string/response_packet_magic_header"
+                        android:visibility="@{!config.interface.responsePacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/init_packet_magic_header_text" />
+
+                    <TextView
+                        android:id="@+id/response_packet_magic_header_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.responsePacketMagicHeader}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.responsePacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/response_packet_magic_header_label"
+                        tools:text="3288052141" />
+
+                    <TextView
+                        android:id="@+id/underload_packet_magic_header_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/underload_packet_magic_header_text"
+                        android:text="@string/underload_packet_magic_header"
+                        android:visibility="@{!config.interface.underloadPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/response_packet_magic_header_text" />
+
+                    <TextView
+                        android:id="@+id/underload_packet_magic_header_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.underloadPacketMagicHeader}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.underloadPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/underload_packet_magic_header_label"
+                        tools:text="2528465083" />
+
+                    <TextView
+                        android:id="@+id/transport_packet_magic_header_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/transport_packet_magic_header_text"
+                        android:text="@string/transport_packet_magic_header"
+                        android:visibility="@{!config.interface.transportPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/underload_packet_magic_header_text" />
+
+                    <TextView
+                        android:id="@+id/transport_packet_magic_header_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@{config.interface.transportPacketMagicHeader}"
+                        android:visibility="@{!config.interface.transportPacketMagicHeader.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/transport_packet_magic_header_label"
+                        tools:text="1766607858" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i1_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/special_junk_i1_text"
+                        android:text="@string/special_junk_i1"
+                        android:visibility="@{!config.interface.specialJunkI1.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/transport_packet_magic_header_text" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i1_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:contentDescription="@string/special_junk_i1"
+                        android:nextFocusUp="@id/transport_packet_magic_header_text"
+                        android:nextFocusDown="@id/special_junk_i2_text"
+                        android:nextFocusForward="@id/special_junk_i2_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.specialJunkI1}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.specialJunkI1.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i1_label"
+                        tools:text="&lt;b 0x10001c00c00050001000000df00210473746c730561646f626506636f6d2d636e09656467657375697465036e657400c02b00050001000001e200350473746c730561646f626506636f6d2d636e09656467657375697465036e65740b676c6f62616c726564697206616b61646e73c047c0580005000100&gt;" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i2_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/special_junk_i2_text"
+                        android:text="@string/special_junk_i2"
+                        android:visibility="@{!config.interface.specialJunkI2.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i1_text" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i2_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:contentDescription="@string/special_junk_i2"
+                        android:nextFocusUp="@id/special_junk_i1_text"
+                        android:nextFocusDown="@id/special_junk_i3_text"
+                        android:nextFocusForward="@id/special_junk_i3_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.specialJunkI2}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.specialJunkI2.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i2_label"
+                        tools:text="&lt;b 0x1234&gt;" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i3_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/special_junk_i3_text"
+                        android:text="@string/special_junk_i3"
+                        android:visibility="@{!config.interface.specialJunkI3.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i2_text" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i3_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:contentDescription="@string/special_junk_i3"
+                        android:nextFocusUp="@id/special_junk_i2_text"
+                        android:nextFocusDown="@id/special_junk_i4_text"
+                        android:nextFocusForward="@id/special_junk_i4_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.specialJunkI3}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.specialJunkI3.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i3_label"
+                        tools:text="&lt;b 0x1234567890&gt;" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i4_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/special_junk_i4_text"
+                        android:text="@string/special_junk_i4"
+                        android:visibility="@{!config.interface.specialJunkI4.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i3_text" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i4_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:contentDescription="@string/special_junk_i4"
+                        android:nextFocusUp="@id/special_junk_i3_text"
+                        android:nextFocusDown="@id/special_junk_i5_text"
+                        android:nextFocusForward="@id/special_junk_i5_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.specialJunkI4}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.specialJunkI4.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i4_label"
+                        tools:text="&lt;b 0xdeadbeef&gt;" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i5_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/special_junk_i5_text"
+                        android:text="@string/special_junk_i5"
+                        android:visibility="@{!config.interface.specialJunkI5.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i4_text" />
+
+                    <TextView
+                        android:id="@+id/special_junk_i5_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:contentDescription="@string/special_junk_i5"
+                        android:nextFocusUp="@id/special_junk_i4_text"
+                        android:nextFocusDown="@id/applications_text"
+                        android:nextFocusForward="@id/applications_text"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.specialJunkI5}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{!config.interface.specialJunkI5.isPresent() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/special_junk_i5_label"
+                        tools:text="&lt;rc 12&gt;&lt;t&gt;&lt;rd 18&gt;" />
+
+                    <androidx.constraintlayout.widget.Barrier
+                        android:id="@+id/kapovpn_barrier"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:barrierDirection="bottom"
+                        app:constraint_referenced_ids="transport_packet_magic_header_text,special_junk_i1_text,special_junk_i2_text,special_junk_i3_text,special_junk_i4_text,special_junk_i5_text" />
+
+                    <TextView
+                        android:id="@+id/applications_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:labelFor="@+id/applications_text"
+                        android:text="@string/applications"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/kapovpn_barrier" />
+
+                    <TextView
+                        android:id="@+id/applications_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/applications"
+                        android:nextFocusUp="@id/special_junk_i5_text"
+                        android:nextFocusDown="@id/peers_layout"
+                        android:nextFocusForward="@id/peers_layout"
+                        android:onClick="@{ClipboardUtils::copyTextView}"
+                        android:text="@{config.interface.includedApplications.isEmpty() ? @plurals/n_excluded_applications(config.interface.excludedApplications.size(), config.interface.excludedApplications.size()) : @plurals/n_included_applications(config.interface.includedApplications.size(), config.interface.includedApplications.size())}"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
+                        android:visibility="@{config.interface.includedApplications.isEmpty() &amp;&amp; config.interface.excludedApplications.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE}"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toBottomOf="@+id/applications_label"
+                        tools:text="8 excluded" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:id="@+id/peers_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:divider="@null"
+                android:orientation="vertical"
+                app:items="@{config.peers}"
+                app:layout="@{@layout/tunnel_detail_peer}"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/tunnel_detail_card"
+                tools:ignore="UselessLeaf" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+</layout>

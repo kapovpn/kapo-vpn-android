@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- KAPO "Cyber" palette: near-black with cyan + magenta + violet neon.
+         Names are kept from the previous theme so every layout keeps working;
+         only the values changed. Primary accent = cyan, warm/CTA = magenta,
+         tertiary = violet. The two full-screen backgrounds live in
+         bg_state_off / bg_state_on and are crossfaded by MainActivity. -->
+    <color name="bg">#05060C</color>
+    <color name="bg_deep">#04050A</color>
+    <color name="surface">#0B0F18</color>
+    <color name="surface2">#111826</color>
+    <color name="surface3">#172234</color>
+    <color name="surface_card">#0C1220</color>
+    <color name="surface_hi">#172234</color>
+
+    <!-- Glass: white / cyan-alpha washes used by cards, tracks and the nav bar. -->
+    <color name="glass_overlay">#12FFFFFF</color>
+    <color name="glass_lo">#0DFFFFFF</color>
+    <color name="glass_edge">#268CD2FF</color>
+    <color name="glass_hi">#33FFFFFF</color>
+    <color name="well">#4D000000</color>
+
+    <!-- Primary accent = CYAN (mapped onto the old "teal" names). -->
+    <color name="teal">#00E5FF</color>
+    <color name="teal_ink">#7FF0FF</color>
+    <color name="teal_dim">#2E00E5FF</color>
+    <color name="teal_mid">#6600E5FF</color>
+    <color name="teal_glow">#1A00E5FF</color>
+
+    <!-- Magenta + violet accents -->
+    <color name="magenta">#FF3D95</color>
+    <color name="magenta_ink">#FF9DC2</color>
+    <color name="magenta_dim">#2EFF3D95</color>
+    <color name="magenta_mid">#66FF3D95</color>
+    <color name="violet">#9B6BFF</color>
+    <color name="violet_ink">#C4B0FF</color>
+
+    <!-- Warm / CTA accent = MAGENTA (mapped onto the old "amber" names). -->
+    <color name="amber">#FF3D95</color>
+    <color name="amber_hi">#FF6FB0</color>
+    <color name="amber_deep">#E01F7A</color>
+    <color name="amber_ink">#FF9DC2</color>
+    <color name="amber_dim">#2EFF3D95</color>
+    <color name="warm">#FF3D95</color>
+
+    <!-- Status connected = cyan, matching the sphere. -->
+    <color name="green">#00E5FF</color>
+    <color name="green_ink">#7FF0FF</color>
+    <color name="green_dim">#2E00E5FF</color>
+    <color name="green_deep">#00A7C4</color>
+    <color name="coral">#FF5C7A</color>
+    <color name="coral_ink">#FF9BA6</color>
+    <color name="coral_dim">#2EFF5C7A</color>
+    <color name="orange">#FF8A5C</color>
+    <color name="orange_dim">#2EFF8A5C</color>
+
+    <!-- Text on dark (lifted for readability) -->
+    <color name="text">#EEF9FF</color>
+    <color name="text_muted">#B6C6D8</color>
+    <color name="text_faint">#93A6BB</color>
+    <color name="text_on_amber">#14040E</color>
+    <color name="text_on_mint">#02121A</color>
+
+    <!-- Borders: cyan-tinted white hairlines with alpha -->
+    <color name="border">#268CD2FF</color>
+    <color name="border_hi">#42A6D8FF</color>
+    <color name="border_teal">#6600E5FF</color>
+    <color name="border_magenta">#66FF3D95</color>
+    <color name="border_green">#6600E5FF</color>
+    <color name="border_amber">#66FF3D95</color>
+
+    <color name="transparent">#00000000</color>
+
+    <!-- Default (base) declarations for the status colors that were only in
+         values-night; without a base value lint blocks the release and the
+         resource can crash in non-night configs. -->
+    <color name="tunnel_status_connected">#66BB6A</color>
+    <color name="tunnel_status_connecting">#FFB74D</color>
+    <color name="tunnel_status_disconnected">#EF5350</color>
+</resources>

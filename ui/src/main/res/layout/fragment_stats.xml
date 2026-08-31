@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/transparent"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="28dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="14dp"
+            android:background="@drawable/bg_bottom_border">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="STATS"
+                android:textColor="@color/text"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.28"/>
+        </LinearLayout>
+
+        <!-- ══════════ TRAFFIC ══════════ -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TRAFFIC"
+            android:textColor="@color/text_muted"
+            android:textSize="9sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.22"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_group_card"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:clipToOutline="true">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@drawable/bg_accent_teal"/>
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_stat_teal"
+                    android:padding="16dp"
+                    android:layout_marginEnd="4dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="↓ DOWNLOAD" android:textColor="@color/teal_ink"
+                        android:textSize="8sp" android:fontFamily="sans-serif-rounded" android:textStyle="bold"
+                        android:letterSpacing="0.14" android:layout_marginBottom="6dp"/>
+                    <TextView android:id="@+id/tvRecvTotal" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="0.00"
+                        android:textColor="@color/teal_ink" android:textSize="30sp"
+                        android:fontFamily="sans-serif-rounded" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="MB" android:textColor="@color/text_muted"
+                        android:textSize="9sp" android:fontFamily="sans-serif-rounded" android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_stat_magenta"
+                    android:padding="16dp"
+                    android:layout_marginStart="4dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="↑ UPLOAD" android:textColor="@color/magenta_ink"
+                        android:textSize="8sp" android:fontFamily="sans-serif-rounded" android:textStyle="bold"
+                        android:letterSpacing="0.14" android:layout_marginBottom="6dp"/>
+                    <TextView android:id="@+id/tvSentTotal" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="0.00"
+                        android:textColor="@color/magenta_ink" android:textSize="30sp"
+                        android:fontFamily="sans-serif-rounded" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="MB" android:textColor="@color/text_muted"
+                        android:textSize="9sp" android:fontFamily="sans-serif-rounded" android:layout_marginTop="2dp"/>
+                </LinearLayout>
+            </GridLayout>
+        </LinearLayout>
+
+        <!-- ══════════ PROTECTION ══════════ -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="PROTECTION"
+            android:textColor="@color/text_muted"
+            android:textSize="9sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.22"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="22dp"
+            android:paddingBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_group_card"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:clipToOutline="true">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@drawable/bg_accent_green"/>
+
+            <include layout="@layout/item_toggle" android:id="@+id/toggleKillSwitch"/>
+            <include layout="@layout/item_toggle" android:id="@+id/toggleDns"/>
+            <include layout="@layout/item_toggle" android:id="@+id/toggleMultiHop"/>
+            <include layout="@layout/item_toggle" android:id="@+id/toggleAdBlock"/>
+        </LinearLayout>
+
+        <!-- ══════════ PROTOCOL ══════════ -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="PROTOCOL"
+            android:textColor="@color/text_muted"
+            android:textSize="9sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.22"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="22dp"
+            android:paddingBottom="10dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_group_card"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:clipToOutline="true">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="@drawable/bg_accent_amber"/>
+
+            <LinearLayout
+                android:id="@+id/protoAmneziaWG"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:background="@drawable/bg_bottom_border"
+                android:clickable="true" android:focusable="true">
+                <View android:id="@+id/radioAmneziaWG" android:layout_width="18dp" android:layout_height="18dp"
+                    android:background="@drawable/bg_radio_selected" android:layout_marginEnd="14dp"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="AmneziaWG" android:textColor="@color/text" android:textSize="14sp"
+                        android:fontFamily="sans-serif-rounded" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="ACTIVE" android:textColor="@color/teal_ink"
+                        android:textSize="8sp" android:fontFamily="sans-serif-rounded" android:textStyle="bold"
+                        android:letterSpacing="0.12" android:paddingStart="8dp" android:paddingEnd="8dp"
+                        android:paddingTop="3dp" android:paddingBottom="3dp"
+                        android:background="@drawable/bg_tag_teal" android:layout_marginTop="5dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/protoVless"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:background="@drawable/bg_bottom_border"
+                android:clickable="true" android:focusable="true">
+                <View android:id="@+id/radioVless" android:layout_width="18dp" android:layout_height="18dp"
+                    android:background="@drawable/bg_radio_unselected" android:layout_marginEnd="14dp"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="VLESS/Reality" android:textColor="@color/text" android:textSize="14sp"
+                        android:fontFamily="sans-serif-rounded" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="SOON" android:textColor="@color/text_muted"
+                        android:textSize="8sp" android:fontFamily="sans-serif-rounded" android:textStyle="bold"
+                        android:letterSpacing="0.16" android:paddingStart="8dp" android:paddingEnd="8dp"
+                        android:paddingTop="3dp" android:paddingBottom="3dp"
+                        android:background="@drawable/bg_pill_glass" android:layout_marginTop="5dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/protoAuto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="16dp"
+                android:clickable="true" android:focusable="true">
+                <View android:id="@+id/radioAuto" android:layout_width="18dp" android:layout_height="18dp"
+                    android:background="@drawable/bg_radio_unselected" android:layout_marginEnd="14dp"/>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Auto" android:textColor="@color/text" android:textSize="14sp"
+                        android:fontFamily="sans-serif-rounded" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="SOON" android:textColor="@color/text_muted"
+                        android:textSize="8sp" android:fontFamily="sans-serif-rounded" android:textStyle="bold"
+                        android:letterSpacing="0.16" android:paddingStart="8dp" android:paddingEnd="8dp"
+                        android:paddingTop="3dp" android:paddingBottom="3dp"
+                        android:background="@drawable/bg_pill_glass" android:layout_marginTop="5dp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

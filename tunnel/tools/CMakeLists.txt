@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright © 2017-2023 WireGuard LLC. All Rights Reserved.
+
+cmake_minimum_required(VERSION 3.4.1)
+project("KapoVPN")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+add_link_options(LINKER:--build-id=none)
+# Google Play requires 16 KB page-size alignment for native libraries. Force it
+# for the CMake-built libs (libwg.so, libwg-quick.so); libwg-go.so picks it up
+# from CMAKE_SHARED_LINKER_FLAGS via its Makefile, and NDK r27+ also defaults
+# to this. Harmless if the toolchain already aligns to 16 KB.
+add_link_options(LINKER:-z,max-page-size=16384)
+add_compile_options(-Wall -Werror)
+
+add_executable(libwg-quick.so amneziawg-tools/src/wg-quick/android.c ndk-compat/compat.c)
+target_compile_options(libwg-quick.so PUBLIC -std=gnu11 -include ${CMAKE_CURRENT_SOURCE_DIR}/ndk-compat/compat.h -DAWG_PACKAGE_NAME=\"${ANDROID_PACKAGE_NAME}\")
+target_link_libraries(libwg-quick.so -ldl)
+
+file(GLOB WG_SOURCES amneziawg-tools/src/*.c ndk-compat/compat.c)
+add_executable(libwg.so ${WG_SOURCES})
+target_include_directories(libwg.so PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/amneziawg-tools/src/uapi/linux/" "${CMAKE_CURRENT_SOURCE_DIR}/amneziawg-tools/src/")
+target_compile_options(libwg.so PUBLIC -std=gnu11 -include ${CMAKE_CURRENT_SOURCE_DIR}/ndk-compat/compat.h -DRUNSTATEDIR=\"/data/data/${ANDROID_PACKAGE_NAME}/cache\")
+
+if(CMAKE_HOST_WIN32)
+    file(TO_CMAKE_PATH "${GRADLE_USER_HOME}" GRADLE_USER_HOME)
+endif()
+
+add_custom_target(libwg-go.so WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/libwg-go" COMMENT "Building amneziawg-go" VERBATIM COMMAND "${ANDROID_HOST_PREBUILTS}/bin/make"
+    ANDROID_ARCH_NAME=${ANDROID_ARCH_NAME}
+    ANDROID_PACKAGE_NAME=${ANDROID_PACKAGE_NAME}
+    GRADLE_USER_HOME=${GRADLE_USER_HOME}
+    CC=${CMAKE_C_COMPILER}
+    CFLAGS=${CMAKE_C_FLAGS}
+    LDFLAGS=${CMAKE_SHARED_LINKER_FLAGS}
+    SYSROOT=${CMAKE_SYSROOT}
+    TARGET=${CMAKE_C_COMPILER_TARGET}
+    DESTDIR=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    BUILDDIR=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/../generated-src
+)
+
+# Strip unwanted ELF sections to prevent DT_FLAGS_1 warnings on old Android versions
+file(GLOB ELF_CLEANER_SOURCES elf-cleaner/*.c elf-cleaner/*.cpp)
+if(NOT CMAKE_HOST_WIN32)
+    find_program(HOST_CC NAMES cc gcc clang)
+    find_program(HOST_CXX NAMES c++ g++ clang++)
+endif()
+
+if(HOST_CC AND HOST_CXX AND NOT CMAKE_HOST_WIN32)
+    add_custom_target(elf-cleaner COMMENT "Building elf-cleaner" VERBATIM COMMAND ${HOST_CXX}
+            -O2 -DPACKAGE_NAME=\"elf-cleaner\" -DPACKAGE_VERSION=\"\" -DCOPYRIGHT=\"\"
+            -o "${CMAKE_CURRENT_BINARY_DIR}/elf-cleaner" ${ELF_CLEANER_SOURCES}
+    )
+    add_custom_command(TARGET libwg.so POST_BUILD VERBATIM COMMAND "${CMAKE_CURRENT_BINARY_DIR}/elf-cleaner"
+            --api-level "${ANDROID_NATIVE_API_LEVEL}" "$<TARGET_FILE:libwg.so>")
+    add_dependencies(libwg.so elf-cleaner)
+    add_custom_command(TARGET libwg-quick.so POST_BUILD VERBATIM COMMAND "${CMAKE_CURRENT_BINARY_DIR}/elf-cleaner"
+            --api-level "${ANDROID_NATIVE_API_LEVEL}" "$<TARGET_FILE:libwg-quick.so>")
+    add_dependencies(libwg-quick.so elf-cleaner)
+else()
+    message(WARNING "Host compiler (cc/gcc/clang) not found or platform is Windows. Skipping elf-cleaner. This may cause issues on older Android versions.")
+endif()

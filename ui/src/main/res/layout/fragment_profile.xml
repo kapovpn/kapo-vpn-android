@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/transparent"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="28dp">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="14dp"
+            android:background="@drawable/bg_bottom_border">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ACCOUNT"
+                android:textColor="@color/text"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.28"/>
+        </LinearLayout>
+
+        <!-- Account card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_teal"
+            android:padding="20dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="18dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="ACCOUNT NUMBER"
+                android:textColor="@color/teal_ink"
+                android:textSize="8sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.22"
+                android:gravity="center"
+                android:layout_marginBottom="14dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_input"
+                android:paddingStart="14dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:id="@+id/tvAccountNumber"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="••••-••••-••••-••••"
+                    android:textColor="@color/text"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:ellipsize="none"
+                    android:letterSpacing="0.02"/>
+
+                <TextView
+                    android:id="@+id/btnToggleAccount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SHOW"
+                    android:textColor="@color/teal_ink"
+                    android:textSize="9sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.16"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:background="@drawable/bg_tag_teal"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnCopyAccount"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="COPY ACCOUNT NUMBER"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.16"
+                android:gravity="center"
+                android:background="@drawable/bg_btn_outline"
+                android:clickable="true"
+                android:focusable="true"/>
+        </LinearLayout>
+
+        <!-- Notifications row -->
+        <LinearLayout
+            android:id="@+id/btnNotifications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card_3d"
+            android:padding="18dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="12dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_bell"
+                android:tint="@color/text_muted"
+                android:layout_marginEnd="12dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Notifications"
+                android:textColor="@color/text"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvNotifNew"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NEW"
+                android:textColor="@color/magenta"
+                android:textSize="8sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.16"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/bg_tag_magenta"
+                android:layout_marginEnd="10dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&#x203A;"
+                android:textColor="@color/text_faint"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-rounded"/>
+        </LinearLayout>
+
+        <!-- Subscription card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_3d"
+            android:padding="20dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SUBSCRIPTION"
+                android:textColor="@color/text_faint"
+                android:textSize="8sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.22"
+                android:layout_marginBottom="14dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvSubPlan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Monthly Plan · $4.99"
+                        android:textColor="@color/text"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-rounded"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:id="@+id/tvSubExpiry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Expires: Jan 15, 2026"
+                        android:textColor="@color/text_muted"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif-rounded"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvSubStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ACTIVE"
+                    android:textColor="@color/teal_ink"
+                    android:textSize="8sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.16"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="5dp"
+                    android:paddingBottom="5dp"
+                    android:background="@drawable/bg_tag_teal"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnAddTime"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="Manage account on the web  ↗"
+                android:textColor="@color/teal_ink"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-rounded"
+                android:textStyle="bold"
+                android:letterSpacing="0.06"
+                android:gravity="center"
+                android:background="@drawable/bg_btn_outline_cyan"
+                android:layout_marginTop="16dp"
+                android:clickable="true"
+                android:focusable="true"/>
+        </LinearLayout>
+
+        <!-- Devices card: inline, live from the server (X / max, REMOVE per row) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_3d"
+            android:padding="20dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="DEVICES"
+                    android:textColor="@color/text_faint"
+                    android:textSize="8sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.22"/>
+                <TextView
+                    android:id="@+id/tvDevicesCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="– / 5"
+                    android:textColor="@color/teal_ink"
+                    android:textSize="9sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.12"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvDevicesEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Loading devices…"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-rounded"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"/>
+
+            <LinearLayout
+                android:id="@+id/devicesList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+        </LinearLayout>
+
+        <View android:layout_width="match_parent" android:layout_height="16dp"/>
+
+        <!-- Logout -->
+        <TextView
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:text="LOG OUT"
+            android:textColor="@color/coral_ink"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-rounded"
+            android:textStyle="bold"
+            android:letterSpacing="0.18"
+            android:gravity="center"
+            android:background="@drawable/bg_btn_danger"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:clickable="true"
+            android:focusable="true"/>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

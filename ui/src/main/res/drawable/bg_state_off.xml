@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- KAPO Cyber background - DISCONNECTED. Near-black base with soft cyan,
+     violet and a faint magenta glow in the corners (static "blobs"). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#0B101F"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.16" android:centerY="0.08"
+                android:gradientRadius="80%p"
+                android:startColor="#4000E5FF" android:endColor="#0000E5FF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.94" android:centerY="0.14"
+                android:gradientRadius="70%p"
+                android:startColor="#389B6BFF" android:endColor="#009B6BFF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.82" android:centerY="1.0"
+                android:gradientRadius="60%p"
+                android:startColor="#29FF3D95" android:endColor="#00FF3D95"/>
+        </shape>
+    </item>
+</layer-list>
