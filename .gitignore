@@ -31,3 +31,5 @@ fixmake2.py
 fixgradle.py
 
 gradle.properties
+
+_tmp/
