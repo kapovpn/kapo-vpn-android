@@ -37,8 +37,10 @@ object KapoState {
         private set
 
     // ── protection toggles ──
-    var killSwitch = true
-    var dnsProtection = true
+    // Kill switch and DNS protection are always-on facts about the tunnel
+    // (full-tunnel routing + setBlocking(true) in GoBackend; DNS is always
+    // the server-assigned resolver), not settings - so they live only as
+    // fixed copy in StatsFragment, not as state here. See its setupAlwaysOn().
     /** Ad/tracker blocking. OFF by default; when the tunnel is up, flipping this
      *  reconnects so the node hands out (or stops handing out) its filtering DNS. */
     var adBlock = false

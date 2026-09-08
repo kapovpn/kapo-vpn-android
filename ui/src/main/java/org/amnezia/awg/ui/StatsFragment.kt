@@ -32,12 +32,17 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupToggle(binding.toggleKillSwitch, "Kill Switch", "Block traffic if VPN drops", KapoState.killSwitch) {
-            KapoState.killSwitch = it
-        }
-        setupToggle(binding.toggleDns, "DNS Protection", "Encrypted DoH / DoQ", KapoState.dnsProtection) {
-            KapoState.dnsProtection = it
-        }
+        // Kill Switch and DNS Protection are NOT user-togglable: the tunnel is
+        // always built full-tunnel (AllowedIPs = 0.0.0.0/0, ::/0) with
+        // setBlocking(true) in GoBackend, so non-tunnel traffic is already
+        // blocked outright whenever the interface is up, and DNS is always the
+        // server-assigned resolver from enrollment - neither depends on a
+        // setting. Leaving these interactive (as they used to be) let a user
+        // believe they'd turned protection off when nothing actually read the
+        // switch. Same fix already shipped on the Windows client - see its
+        // MainWindow.xaml comment for the same reasoning. Shown as status here.
+        setupAlwaysOn(binding.toggleKillSwitch, "Kill Switch", "Always on - blocks traffic if the tunnel drops")
+        setupAlwaysOn(binding.toggleDns, "DNS Protection", "Always on - DNS locked to the assigned resolver")
 
         // Multi-Hop is live: this row is a quick 1<->2 hop switch (3-hop lives on
         // the Home screen). Flipping it reconnects through the extra country.
@@ -112,6 +117,17 @@ class StatsFragment : Fragment() {
             setToggleVisual(toggleBinding, next, animate = true)
             onToggle(next)
         }
+    }
+
+    /** A protection row that's always enforced and can't actually be turned
+     *  off - rendered permanently ON with no click handler, instead of a real
+     *  toggle, so it can never lie about its own state. */
+    private fun setupAlwaysOn(toggleBinding: ItemToggleBinding, name: String, desc: String) {
+        toggleBinding.tvToggleName.text = name
+        toggleBinding.tvToggleDesc.text = desc
+        setToggleVisual(toggleBinding, isOn = true, animate = false)
+        toggleBinding.root.isClickable = false
+        toggleBinding.root.alpha = 0.85f
     }
 
     private fun setToggleVisual(tb: ItemToggleBinding, isOn: Boolean, animate: Boolean) {
