@@ -5,7 +5,12 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.amnezia.awg.databinding.ActivityLoginBinding
+import org.amnezia.awg.util.SecureAccountStore
 
 class LoginActivity : AppCompatActivity() {
 
@@ -20,7 +25,7 @@ class LoginActivity : AppCompatActivity() {
         // IS the credential - Mullvad-style - so its presence is enough here; the
         // server is re-checked on every connect.)
         val savedPrefs = getSharedPreferences("kapo_prefs", MODE_PRIVATE)
-        val savedAccount = savedPrefs.getString("account_number", "") ?: ""
+        val savedAccount = SecureAccountStore.read(savedPrefs)
         if (isValidAccount(savedAccount)) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
@@ -88,32 +93,31 @@ class LoginActivity : AppCompatActivity() {
     private fun signIn(account: String) {
         binding.btnLogin.isEnabled = false
         binding.btnLogin.text = "CHECKING..."
-        Thread {
-            val res = LicenseClient.validate(this, account)
-            runOnUiThread {
-                binding.btnLogin.text = "Activate & Connect"
-                binding.btnLogin.isEnabled = true
-                when {
-                    res.valid -> {
-                        getSharedPreferences("kapo_prefs", MODE_PRIVATE).edit()
-                            .putString("account_number", account)
-                            .putInt("days_left", res.daysLeft)
-                            .putLong("last_validated", System.currentTimeMillis())
-                            .apply()
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finish()
-                    }
-                    res.status == "network_error" ->
-                        toast("Can't reach the server. Check your connection.")
-                    res.status == "not_found" || res.status == "invalid" ->
-                        toast("That account number wasn't found.")
-                    res.status == "revoked" -> toast("This account has been disabled.")
-                    res.status == "device_limit" -> toast("Device limit reached for this account.")
-                    res.daysLeft <= 0 -> toast("This account has expired. Add more time at kapovpn.com.")
-                    else -> toast("Sign-in failed. Try again.")
+        lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) { LicenseClient.validate(this@LoginActivity, account) }
+            binding.btnLogin.text = "Activate & Connect"
+            binding.btnLogin.isEnabled = true
+            when {
+                res.valid -> {
+                    val prefs = getSharedPreferences("kapo_prefs", MODE_PRIVATE)
+                    SecureAccountStore.save(prefs, account)
+                    prefs.edit()
+                        .putInt("days_left", res.daysLeft)
+                        .putLong("last_validated", System.currentTimeMillis())
+                        .apply()
+                    startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                    finish()
                 }
+                res.status == "network_error" ->
+                    toast("Can't reach the server. Check your connection.")
+                res.status == "not_found" || res.status == "invalid" ->
+                    toast("That account number wasn't found.")
+                res.status == "revoked" -> toast("This account has been disabled.")
+                res.status == "device_limit" -> toast("Device limit reached for this account.")
+                res.daysLeft <= 0 -> toast("This account has expired. Add more time at kapovpn.com.")
+                else -> toast("Sign-in failed. Try again.")
             }
-        }.start()
+        }
     }
 
     private fun toast(msg: String) =

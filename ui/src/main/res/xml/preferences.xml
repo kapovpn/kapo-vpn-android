@@ -18,6 +18,11 @@
         android:singleLineTitle="false"
         android:summary="@string/log_viewer_pref_summary"
         android:title="@string/log_viewer_pref_title" />
+    <Preference
+        android:key="self_test"
+        android:singleLineTitle="false"
+        android:summary="@string/self_test_pref_summary"
+        android:title="@string/self_test_pref_title" />
     <CheckBoxPreference
         android:defaultValue="false"
         android:key="dark_theme"

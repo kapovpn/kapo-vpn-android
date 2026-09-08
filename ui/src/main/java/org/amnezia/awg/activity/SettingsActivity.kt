@@ -7,7 +7,10 @@ package org.amnezia.awg.activity
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
@@ -45,6 +48,14 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     class SettingsFragment : PreferenceFragmentCompat() {
+        // This fragment is added straight to android.R.id.content (no custom
+        // activity layout to hang android:fitsSystemWindows="true" off of, the
+        // convention used elsewhere in the app - see activity_login.xml). Without
+        // this, the first list row renders partly under the status bar.
+        override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+            return super.onCreateView(inflater, container, savedInstanceState).also { it.fitsSystemWindows = true }
+        }
+
         override fun onCreatePreferences(savedInstanceState: Bundle?, key: String?) {
             preferenceManager.preferenceDataStore = PreferencesPreferenceDataStore(lifecycleScope, Application.getPreferencesDataStore())
             addPreferencesFromResource(R.xml.preferences)
@@ -80,6 +91,10 @@ class SettingsActivity : AppCompatActivity() {
             }
             preferenceManager.findPreference<Preference>("log_viewer")?.setOnPreferenceClickListener {
                 startActivity(Intent(requireContext(), LogViewerActivity::class.java))
+                true
+            }
+            preferenceManager.findPreference<Preference>("self_test")?.setOnPreferenceClickListener {
+                startActivity(Intent(requireContext(), SelfTestActivity::class.java))
                 true
             }
             val kernelModuleEnabler = preferenceManager.findPreference<Preference>("kernel_module_enabler")

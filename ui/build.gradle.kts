@@ -56,7 +56,10 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            signingConfig = signingConfigs.getByName("release")
+            // Deliberately NOT signingConfigs.getByName("release") - that meant every
+            // local/CI debug build exercised the production signing key, and required
+            // KAPO_STORE_* to be set just to build debug at all. AGP's automatic debug
+            // signing config (~/.android/debug.keystore) is what this is for.
         }
         create("googleplay") {
             initWith(getByName("release"))

@@ -85,14 +85,16 @@
             android:parentActivityName=".ui.LoginActivity" />
 
         <activity
+            android:name=".activity.SelfTestActivity"
+            android:exported="false"
+            android:label="@string/self_test_title"
+            android:parentActivityName=".activity.SettingsActivity" />
+
+        <activity
             android:name=".activity.TunnelCreatorActivity"
             android:label="@string/create_activity_title"
             android:parentActivityName=".ui.LoginActivity" />
 
-        <activity
-            android:name="com.journeyapps.barcodescanner.CaptureActivity"
-            android:screenOrientation="fullSensor"
-            tools:replace="screenOrientation" />
 
         <activity
             android:name=".activity.LogViewerActivity"

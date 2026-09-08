@@ -13,10 +13,13 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.amnezia.awg.R
 import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.databinding.FragmentHomeBinding
+import org.amnezia.awg.util.SecureAccountStore
 
 class HomeFragment : Fragment() {
 
@@ -29,6 +32,10 @@ class HomeFragment : Fragment() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var durationSeconds = 0
+
+    companion object {
+        private const val LICENSE_RECHECK_MS = 86_400_000L // once a day, per LicenseClient's own doc comment
+    }
 
     // The chain (entry..exit) the live tunnel was built with, to detect a change
     // in location or hop count and reconnect on the new route.
@@ -72,7 +79,50 @@ class HomeFragment : Fragment() {
                     KapoState.setTraffic(s.first, s.second)
                 }
             }
+
+            // Cheap local check every minute of wall-clock ticks (not every second -
+            // no need to hit SharedPreferences that often); the real 24h gate lives
+            // inside maybeRecheckLicense() against a persisted timestamp, not this
+            // counter, so it survives app restarts. See that function's doc.
+            if (durationSeconds % 60 == 0) maybeRecheckLicense()
+
             handler.postDelayed(this, 1000)
+        }
+    }
+
+    /**
+     * Re-checks the account server-side once a day, matching what LicenseClient's
+     * own doc comment has always claimed happens ("once a day while running") but
+     * that nothing ever actually called during an active session. Gated on a
+     * *persisted* timestamp (kapo_prefs.last_validated - the same field
+     * LoginActivity already writes on sign-in), not a fragment-local counter: a
+     * counter resets every time the app restarts, which on a tunnel that survives
+     * app restarts (restoreConnectionState() trusts KapoVpn.isUp(), never
+     * re-enrolls) could delay re-validation indefinitely for a user who closes
+     * the app often. A wall-clock timestamp can't be reset that way.
+     *
+     * Enroll already rejects expired/revoked accounts server-side - this only
+     * closes the gap for a session that was already up before that happened.
+     */
+    private fun maybeRecheckLicense() {
+        val prefs = requireContext().getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE)
+        val lastValidated = prefs.getLong("last_validated", 0L)
+        if (System.currentTimeMillis() - lastValidated < LICENSE_RECHECK_MS) return
+
+        val acct = account()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) { LicenseClient.validate(requireContext(), acct) }
+            if (res.status == "network_error") return@launch // stay silent, try again next tick
+            if (res.valid) {
+                prefs.edit().putLong("last_validated", System.currentTimeMillis()).putInt("days_left", res.daysLeft).apply()
+                return@launch
+            }
+            if (_binding != null) {
+                revertToDisconnected(
+                    if (res.status == "revoked") "This account has been disabled."
+                    else "Your account has expired. Add more time at kapovpn.com."
+                )
+            }
         }
     }
 
@@ -263,8 +313,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun account(): String =
-        requireContext().getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE)
-            .getString("account_number", "") ?: ""
+        SecureAccountStore.read(requireContext().getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE))
 
     private fun enrollError(status: String): String = when (status) {
         "not_found"            -> "Account not found. Check your number."
@@ -481,6 +530,12 @@ class HomeFragment : Fragment() {
                 resetDisconnectedUi()   // also clears the saved session
             }
         }
+
+        // A tunnel found already up here was never re-enrolled (isUp() above just
+        // asks the real backend, it doesn't touch the license server) - it may
+        // have been sitting connected across app restarts since before it expired.
+        // Check immediately rather than waiting for the next once-a-minute tick.
+        if (looksConnected) maybeRecheckLicense()
     }
 
     private fun restoreUI() {

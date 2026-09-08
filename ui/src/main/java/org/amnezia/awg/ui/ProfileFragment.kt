@@ -15,9 +15,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.amnezia.awg.R
 import org.amnezia.awg.databinding.FragmentProfileBinding
+import org.amnezia.awg.util.SecureAccountStore
 
 class ProfileFragment : Fragment() {
 
@@ -35,7 +38,7 @@ class ProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val prefs = requireContext().getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE)
-        account = prefs.getString("account_number", "") ?: ""
+        account = SecureAccountStore.read(prefs)
         val display = if (account.isNotEmpty()) account else "----·----·----·----"
 
         updateAccountDisplay(display)
@@ -43,6 +46,14 @@ class ProfileFragment : Fragment() {
         binding.btnToggleAccount.setOnClickListener {
             accountVisible = !accountVisible
             updateAccountDisplay(display)
+        }
+
+        // The redesigned tab flow (Home/Servers/Stats/Account) never routes through
+        // MainActivity's options-menu Settings item - that menu only exists on the
+        // legacy tunnel-editor screens and needs a Toolbar/ActionBar this flow doesn't
+        // show. Without this, Settings (and "Verify my protection") had no way in.
+        binding.btnSettings.setOnClickListener {
+            startActivity(Intent(requireContext(), org.amnezia.awg.activity.SettingsActivity::class.java))
         }
 
         binding.btnCopyAccount.setOnClickListener {
@@ -139,25 +150,27 @@ class ProfileFragment : Fragment() {
         }
         b.tvDevicesEmpty.visibility = View.VISIBLE
         b.tvDevicesEmpty.text = "Loading devices…"
-        Thread {
-            val res = DevicesClient.list(account)
-            activity?.runOnUiThread {
-                val bb = _binding ?: return@runOnUiThread
-                bb.tvDevicesCount.text = "${res.devices.size} / ${res.max}"
-                if (!res.ok) {
-                    bb.devicesList.removeAllViews()
-                    bb.tvDevicesEmpty.visibility = View.VISIBLE
-                    bb.tvDevicesEmpty.text = when (res.status) {
-                        "network_error"        -> "Can't reach the server."
-                        "not_found", "invalid" -> "Sign in to manage devices."
-                        else                   -> "Couldn't load devices."
-                    }
-                    bb.tvDevicesCount.text = "– / ${res.max}"
-                    return@runOnUiThread
+        // viewLifecycleOwner-scoped (not a raw Thread + activity?.runOnUiThread):
+        // that pattern silently dropped the result if the fragment's view was
+        // recreated before the request finished, leaving "Loading devices…"
+        // stuck forever with no error shown. This cancels cleanly instead.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) { DevicesClient.list(account) }
+            val bb = _binding ?: return@launch
+            bb.tvDevicesCount.text = "${res.devices.size} / ${res.max}"
+            if (!res.ok) {
+                bb.devicesList.removeAllViews()
+                bb.tvDevicesEmpty.visibility = View.VISIBLE
+                bb.tvDevicesEmpty.text = when (res.status) {
+                    "network_error"        -> "Can't reach the server."
+                    "not_found", "invalid" -> "Sign in to manage devices."
+                    else                   -> "Couldn't load devices."
                 }
-                renderDevices(res.devices)
+                bb.tvDevicesCount.text = "– / ${res.max}"
+                return@launch
             }
-        }.start()
+            renderDevices(res.devices)
+        }
     }
 
     private fun renderDevices(devices: List<DevicesClient.Device>) {
@@ -222,19 +235,20 @@ class ProfileFragment : Fragment() {
     private fun removeDevice(key: String, btn: TextView) {
         btn.text = "…"
         btn.isClickable = false
-        Thread {
-            val ok = DevicesClient.remove(account, key)
-            activity?.runOnUiThread {
-                if (_binding == null) return@runOnUiThread
-                if (ok) {
-                    loadDevices()
-                } else {
-                    btn.text = "REMOVE"
-                    btn.isClickable = true
-                    Toast.makeText(requireContext(), "Couldn't remove that device. Try again.", Toast.LENGTH_SHORT).show()
-                }
+        // Same fix as loadDevices(): lifecycle-aware coroutine instead of a raw
+        // Thread + activity?.runOnUiThread, which could silently drop the result
+        // (button stuck on "…" forever) if the view was recreated meanwhile.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) { DevicesClient.remove(account, key) }
+            if (_binding == null) return@launch
+            if (ok) {
+                loadDevices()
+            } else {
+                btn.text = "REMOVE"
+                btn.isClickable = true
+                Toast.makeText(requireContext(), "Couldn't remove that device. Try again.", Toast.LENGTH_SHORT).show()
             }
-        }.start()
+        }
     }
 
     /** IS/FI/MY -> a friendly node label; unknown ids pass through uppercased. */
