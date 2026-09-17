@@ -59,6 +59,16 @@ class StatsFragment : Fragment() {
 
         setupToggle(binding.toggleAdBlock, "Ad Blocking", "Blocks web ads & trackers", KapoState.adBlock) {
             KapoState.setAdBlock(it)
+            // Turning Ad Blocking off also turns Adult Content off (it depends
+            // on Ad Blocking's resolver) - reflect that in the row's visual too.
+            setToggleVisual(binding.toggleBlockAdult, KapoState.blockAdult, animate = true)
+        }
+
+        // Depends on Ad Blocking's resolver (chained behind it on the node), so
+        // turning this on also turns Ad Blocking on - one tap does the right thing.
+        setupToggle(binding.toggleBlockAdult, "Block Adult Content", "Also blocks adult sites", KapoState.blockAdult) {
+            KapoState.setBlockAdult(it)
+            setToggleVisual(binding.toggleAdBlock, KapoState.adBlock, animate = true)
         }
 
         // AmneziaWG is the live protocol. VLESS/Reality and Auto aren't built yet,

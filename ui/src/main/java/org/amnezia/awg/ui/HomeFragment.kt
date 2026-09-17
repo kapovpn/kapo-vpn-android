@@ -42,6 +42,8 @@ class HomeFragment : Fragment() {
     private var connectedChain: List<String>? = null
     // Ad-block state the live tunnel was built with, to detect a toggle change.
     private var connectedAdblock: Boolean = false
+    // Adult-content-block state the live tunnel was built with, ditto.
+    private var connectedAdult: Boolean = false
 
     // Android's one-time "allow this app to set up a VPN?" consent. When the
     // user approves, we proceed with the actual tunnel bring-up.
@@ -56,11 +58,13 @@ class HomeFragment : Fragment() {
     private val onStateChanged: () -> Unit = {
         _binding?.let {
             applyHopUI(KapoState.hopCount)
-            // If the user changed location, hop count, or ad-block while
-            // connected, reconnect on the new route so the change takes effect.
+            // If the user changed location, hop count, ad-block, or adult-content
+            // block while connected, reconnect on the new route so the change
+            // takes effect.
             if (state == ConnState.CONNECTED && connectedChain != null &&
                 (connectedChain != KapoState.buildChain() ||
-                 connectedAdblock != KapoState.adBlock)) {
+                 connectedAdblock != KapoState.adBlock ||
+                 connectedAdult != KapoState.blockAdult)) {
                 switchServer()
             }
         }
@@ -345,10 +349,11 @@ class HomeFragment : Fragment() {
         if (acct.isEmpty()) { revertToDisconnected("Please sign in again"); return }
         val chain = KapoState.buildChain()
         val adblock = KapoState.adBlock
+        val adult = KapoState.blockAdult
         viewLifecycleOwner.lifecycleScope.launch {
-            val res = KapoVpn.connect(requireContext().applicationContext, acct, chain, adblock)
+            val res = KapoVpn.connect(requireContext().applicationContext, acct, chain, adblock, adult)
             if (_binding == null) return@launch
-            if (res.ok) { connectedChain = chain; connectedAdblock = adblock; onConnected() }
+            if (res.ok) { connectedChain = chain; connectedAdblock = adblock; connectedAdult = adult; onConnected() }
             else revertToDisconnected(enrollError(res.status))
         }
     }
@@ -499,6 +504,7 @@ class HomeFragment : Fragment() {
         state = ConnState.CONNECTED
         connectedChain = KapoState.buildChain()
         connectedAdblock = KapoState.adBlock
+        connectedAdult = KapoState.blockAdult
         KapoState.setConnected(true)
         restoreUI()
         applyHopUI(savedHop)

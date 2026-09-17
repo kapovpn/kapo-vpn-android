@@ -85,9 +85,9 @@ object KapoVpn {
      * network_error / ...). VPN permission must already be granted - the caller
      * handles GoBackend.VpnService.prepare() before calling this.
      */
-    suspend fun connect(ctx: Context, account: String, chain: List<String> = listOf("is"), adblock: Boolean = false): ConnectResult = withContext(Dispatchers.IO) {
+    suspend fun connect(ctx: Context, account: String, chain: List<String> = listOf("is"), adblock: Boolean = false, adult: Boolean = false): ConnectResult = withContext(Dispatchers.IO) {
         val pub = devicePublicKey(ctx)
-        val e = EnrollClient.enroll(ctx, account, pub, chain, adblock)
+        val e = EnrollClient.enroll(ctx, account, pub, chain, adblock, adult)
 
         // Decide which enrollment params to use.
         val effective: EnrollClient.Result

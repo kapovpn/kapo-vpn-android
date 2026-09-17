@@ -26,6 +26,7 @@ object EnrollClient {
         val endpoint: String = "",
         val serverPublicKey: String = "",
         val dns: String = "9.9.9.9",
+        val adultOn: Boolean = false,
         val jc: Int = 0, val jmin: Int = 0, val jmax: Int = 0,
         val s1: Int = 0, val s2: Int = 0,
         val h1: Long = 0, val h2: Long = 0, val h3: Long = 0, val h4: Long = 0
@@ -36,7 +37,7 @@ object EnrollClient {
         catch (e: Exception) { "unknown" }
 
     /** Blocking - always call off the main thread. */
-    fun enroll(ctx: Context, account: String, publicKey: String, chain: List<String> = listOf("is"), adblock: Boolean = false): Result {
+    fun enroll(ctx: Context, account: String, publicKey: String, chain: List<String> = listOf("is"), adblock: Boolean = false, adult: Boolean = false): Result {
         return try {
             val conn = (URL("$BASE_URL/api/v1/enroll").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -53,6 +54,7 @@ object EnrollClient {
                 .put("chain", chainArr)
                 .put("node_id", chain.firstOrNull() ?: "is")   // legacy fallback
                 .put("adblock", adblock)
+                .put("adult", adult)
                 .put("device_id", deviceId(ctx))
                 .toString()
             conn.outputStream.use { it.write(payload.toByteArray()) }
@@ -72,6 +74,7 @@ object EnrollClient {
                 endpoint = node.getString("endpoint"),
                 serverPublicKey = node.getString("server_public_key"),
                 dns = node.optString("dns", "9.9.9.9"),
+                adultOn = node.optBoolean("adult", false),
                 jc = obfs.getInt("Jc"), jmin = obfs.getInt("Jmin"), jmax = obfs.getInt("Jmax"),
                 s1 = obfs.getInt("S1"), s2 = obfs.getInt("S2"),
                 h1 = obfs.getLong("H1"), h2 = obfs.getLong("H2"),

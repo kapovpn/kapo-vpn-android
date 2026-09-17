@@ -45,11 +45,24 @@ object KapoState {
      *  reconnects so the node hands out (or stops handing out) its filtering DNS. */
     var adBlock = false
         private set
+    /** Adult-content blocking. OFF by default. The node's adult resolver is
+     *  chained behind its ad-block resolver, so this can't be on without
+     *  [adBlock] also being on - enforced here, not just server-side. */
+    var blockAdult = false
+        private set
     var protocol = 0                // 0 = AmneziaWG, 1 = VLESS, 2 = Auto
 
     fun setAdBlock(v: Boolean) {
         if (adBlock == v) return
         adBlock = v
+        if (!adBlock) blockAdult = false
+        notifyChanged()
+    }
+
+    fun setBlockAdult(v: Boolean) {
+        if (blockAdult == v) return
+        blockAdult = v
+        if (blockAdult) adBlock = true
         notifyChanged()
     }
 
