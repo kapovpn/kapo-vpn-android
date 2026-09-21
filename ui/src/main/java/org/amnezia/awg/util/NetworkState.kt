@@ -40,6 +40,14 @@ class NetworkState(
     private var currentNetworkType: NetworkType = NetworkType.NONE
     private var validated: Boolean = false
     private var isListenerBound = false
+    // Distinguishes "app just started, nothing to reconnect from" (no callback
+    // needed) from "we had a network, lost it entirely, and are now recovering"
+    // (a real change onNetworkChange must see) - onLost() resets currentNetwork
+    // to null just like the pre-bind state, so without this flag every recovery
+    // from a total outage (airplane mode, a dead zone, WiFi dropping before
+    // cellular takes over) looked identical to first-ever startup and silently
+    // never reconnected the tunnel.
+    private var hasEverConnected: Boolean = false
 
     private val handler: Handler by lazy {
         Handler(Looper.getMainLooper())
@@ -75,11 +83,27 @@ class NetworkState(
                 val isValidated = networkCapabilities.hasCapability(NET_CAPABILITY_VALIDATED)
 
                 if (currentNetwork == null) {
-                    // First network connection
                     currentNetwork = network
                     currentNetworkType = newNetworkType
                     validated = isValidated
-                    Log.d(TAG, "Initial network: $newNetworkType, validated: $validated")
+
+                    if (!hasEverConnected) {
+                        // Genuinely the first network callback since the app
+                        // started - nothing was ever up to reconnect.
+                        Log.d(TAG, "Initial network: $newNetworkType, validated: $validated")
+                        if (isValidated) hasEverConnected = true
+                    } else {
+                        // Recovering from a total outage (onLost cleared
+                        // currentNetwork to null) - treat exactly like a normal
+                        // network change so a tunnel that was up before the
+                        // outage gets reconnected.
+                        Log.d(TAG, "Network recovered after total loss: NONE -> $newNetworkType, validated: $validated")
+                        if (isValidated) {
+                            handler.post {
+                                onNetworkChange(NetworkType.NONE, newNetworkType)
+                            }
+                        }
+                    }
                 } else {
                     if (currentNetwork != network || currentNetworkType != newNetworkType) {
                         // Network changed (e.g., WiFi to Cellular or vice versa)
@@ -92,6 +116,7 @@ class NetworkState(
 
                         if (isValidated) {
                             validated = true
+                            hasEverConnected = true
                             handler.post {
                                 onNetworkChange(oldNetworkType, newNetworkType)
                             }
@@ -99,6 +124,7 @@ class NetworkState(
                     } else if (!validated && isValidated) {
                         // Same network became validated
                         validated = true
+                        hasEverConnected = true
                         Log.d(TAG, "Network validated: $newNetworkType")
                         handler.post {
                             onNetworkChange(currentNetworkType, newNetworkType)
@@ -204,6 +230,7 @@ class NetworkState(
         currentNetwork = null
         currentNetworkType = NetworkType.NONE
         validated = false
+        hasEverConnected = false
     }
 
     fun getCurrentNetworkType(): NetworkType = currentNetworkType
