@@ -145,6 +145,7 @@
             <include layout="@layout/item_toggle" android:id="@+id/toggleMultiHop"/>
             <include layout="@layout/item_toggle" android:id="@+id/toggleAdBlock"/>
             <include layout="@layout/item_toggle" android:id="@+id/toggleBlockAdult"/>
+            <include layout="@layout/item_toggle" android:id="@+id/toggleSplitTunnel"/>
         </LinearLayout>
 
         <!-- ══════════ PROTOCOL ══════════ -->

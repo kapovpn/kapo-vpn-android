@@ -51,7 +51,12 @@ object KapoVpn {
     /** The public key we register with the server. */
     fun devicePublicKey(ctx: Context): String = keyPair(ctx).publicKey.toBase64()
 
-    private fun buildConfig(privBase64: String, e: EnrollClient.Result): Config {
+    private fun buildConfig(
+        privBase64: String,
+        e: EnrollClient.Result,
+        excludedApps: Set<String> = emptySet(),
+        includedApps: Set<String> = emptySet()
+    ): Config {
         // IPv6 leak protection: the node has no v6 exit, so we still CAPTURE all
         // v6 traffic into the tunnel (AllowedIPs ::/0 + a private ULA address on
         // the interface). Captured v6 packets die at the node instead of leaking
@@ -70,6 +75,16 @@ object KapoVpn {
             append("H2 = ").append(e.h2).append('\n')
             append("H3 = ").append(e.h3).append('\n')
             append("H4 = ").append(e.h4).append('\n')
+            // Split tunneling: at most one of these is ever non-empty (see
+            // KapoState.setSplitTunnelApps). Parsed by Interface.Builder's
+            // parseExcludedApplications()/parseIncludedApplications() and
+            // turned into VpnService.Builder.addDisallowedApplication()/
+            // addAllowedApplication() calls in GoBackend - the routing logic
+            // itself already existed upstream, just never had a KAPO caller.
+            if (excludedApps.isNotEmpty())
+                append("ExcludedApplications = ").append(excludedApps.joinToString(", ")).append('\n')
+            if (includedApps.isNotEmpty())
+                append("IncludedApplications = ").append(includedApps.joinToString(", ")).append('\n')
             append("\n[Peer]\n")
             append("PublicKey = ").append(e.serverPublicKey).append('\n')
             append("Endpoint = ").append(e.endpoint).append('\n')
@@ -85,7 +100,15 @@ object KapoVpn {
      * network_error / ...). VPN permission must already be granted - the caller
      * handles GoBackend.VpnService.prepare() before calling this.
      */
-    suspend fun connect(ctx: Context, account: String, chain: List<String> = listOf("is"), adblock: Boolean = false, adult: Boolean = false): ConnectResult = withContext(Dispatchers.IO) {
+    suspend fun connect(
+        ctx: Context,
+        account: String,
+        chain: List<String> = listOf("is"),
+        adblock: Boolean = false,
+        adult: Boolean = false,
+        excludedApps: Set<String> = emptySet(),
+        includedApps: Set<String> = emptySet()
+    ): ConnectResult = withContext(Dispatchers.IO) {
         val pub = devicePublicKey(ctx)
         val e = EnrollClient.enroll(ctx, account, pub, chain, adblock, adult)
 
@@ -112,7 +135,7 @@ object KapoVpn {
         }
 
         try {
-            val cfg = buildConfig(keyPair(ctx).privateKey.toBase64(), effective)
+            val cfg = buildConfig(keyPair(ctx).privateKey.toBase64(), effective, excludedApps, includedApps)
             val mgr = Application.getTunnelManager()
             val tunnel = mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }
                 ?: mgr.create(TUNNEL_NAME, cfg)

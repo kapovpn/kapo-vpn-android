@@ -52,6 +52,21 @@ object KapoState {
         private set
     var protocol = 0                // 0 = AmneziaWG, 1 = VLESS, 2 = Auto
 
+    // ── split tunneling ──
+    // Mirrors Interface's own two-list model (ExcludedApplications /
+    // IncludedApplications - see KapoVpn.buildConfig()): at most one of the
+    // two sets is ever populated. Empty both = every app uses the tunnel,
+    // matching AppListDialogFragment's own "all apps" convention.
+    var splitTunnelApps: Set<String> = emptySet(); private set
+    var splitTunnelExcluded: Boolean = true; private set
+
+    fun setSplitTunnelApps(apps: Set<String>, excluded: Boolean) {
+        if (splitTunnelApps == apps && splitTunnelExcluded == excluded) return
+        splitTunnelApps = apps
+        splitTunnelExcluded = excluded
+        notifyChanged()
+    }
+
     fun setAdBlock(v: Boolean) {
         if (adBlock == v) return
         adBlock = v

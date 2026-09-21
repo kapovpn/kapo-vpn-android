@@ -44,6 +44,9 @@ class HomeFragment : Fragment() {
     private var connectedAdblock: Boolean = false
     // Adult-content-block state the live tunnel was built with, ditto.
     private var connectedAdult: Boolean = false
+    // Split-tunneling selection the live tunnel was built with, ditto.
+    private var connectedSplitTunnelApps: Set<String> = emptySet()
+    private var connectedSplitTunnelExcluded: Boolean = true
 
     // Android's one-time "allow this app to set up a VPN?" consent. When the
     // user approves, we proceed with the actual tunnel bring-up.
@@ -64,7 +67,9 @@ class HomeFragment : Fragment() {
             if (state == ConnState.CONNECTED && connectedChain != null &&
                 (connectedChain != KapoState.buildChain() ||
                  connectedAdblock != KapoState.adBlock ||
-                 connectedAdult != KapoState.blockAdult)) {
+                 connectedAdult != KapoState.blockAdult ||
+                 connectedSplitTunnelApps != KapoState.splitTunnelApps ||
+                 connectedSplitTunnelExcluded != KapoState.splitTunnelExcluded)) {
                 switchServer()
             }
         }
@@ -350,10 +355,18 @@ class HomeFragment : Fragment() {
         val chain = KapoState.buildChain()
         val adblock = KapoState.adBlock
         val adult = KapoState.blockAdult
+        val splitApps = KapoState.splitTunnelApps
+        val splitExcluded = KapoState.splitTunnelExcluded
+        val excludedApps = if (splitExcluded) splitApps else emptySet()
+        val includedApps = if (splitExcluded) emptySet() else splitApps
         viewLifecycleOwner.lifecycleScope.launch {
-            val res = KapoVpn.connect(requireContext().applicationContext, acct, chain, adblock, adult)
+            val res = KapoVpn.connect(requireContext().applicationContext, acct, chain, adblock, adult, excludedApps, includedApps)
             if (_binding == null) return@launch
-            if (res.ok) { connectedChain = chain; connectedAdblock = adblock; connectedAdult = adult; onConnected() }
+            if (res.ok) {
+                connectedChain = chain; connectedAdblock = adblock; connectedAdult = adult
+                connectedSplitTunnelApps = splitApps; connectedSplitTunnelExcluded = splitExcluded
+                onConnected()
+            }
             else revertToDisconnected(enrollError(res.status))
         }
     }
@@ -505,6 +518,8 @@ class HomeFragment : Fragment() {
         connectedChain = KapoState.buildChain()
         connectedAdblock = KapoState.adBlock
         connectedAdult = KapoState.blockAdult
+        connectedSplitTunnelApps = KapoState.splitTunnelApps
+        connectedSplitTunnelExcluded = KapoState.splitTunnelExcluded
         KapoState.setConnected(true)
         restoreUI()
         applyHopUI(savedHop)

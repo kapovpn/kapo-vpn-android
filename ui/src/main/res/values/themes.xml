@@ -4,6 +4,14 @@
         <item name="colorPrimary">#3CE68C</item>
         <item name="colorPrimaryDark">#16181E</item>
         <item name="colorAccent">#FFB86B</item>
+        <!-- MaterialAlertDialogBuilder (AppListDialogFragment's split-tunneling
+             app picker, ConfigNamingDialogFragment) requires colorSurface to be
+             resolvable or it throws IllegalArgumentException on open - this
+             theme never defined it since KAPO's own screens are custom-drawn,
+             not Material-styled. Reusing the app's existing Material3 dark
+             palette (md_theme.xml) rather than inventing new near-black shades. -->
+        <item name="colorSurface">@color/md_theme_dark_surface</item>
+        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
         <item name="android:windowBackground">#05060C</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -18,5 +26,18 @@
     </style>
     <style name="NavTextInactive" parent="@android:style/TextAppearance.Small">
         <item name="android:textSize">9sp</item>
+    </style>
+
+    <!-- AppListDialogFragment's Exclude/Include TabLayout does a stricter
+         runtime check than plain attribute resolution (ThemeEnforcement):
+         it requires isMaterialTheme=true, which only a full Theme.
+         MaterialComponents descendant sets reliably - a ThemeOverlay.
+         MaterialComponents.* alone (tried first) did NOT satisfy it in
+         practice. Applied via a ContextThemeWrapper at that one call site
+         rather than changing Theme.KapoVPN's parent app-wide. -->
+    <style name="ThemeOverlay.KapoVPN.MaterialDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="colorPrimary">#3CE68C</item>
+        <item name="colorSurface">@color/md_theme_dark_surface</item>
+        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
     </style>
 </resources>

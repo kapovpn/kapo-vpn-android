@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import org.amnezia.awg.R
 import org.amnezia.awg.databinding.FragmentStatsBinding
 import org.amnezia.awg.databinding.ItemToggleBinding
+import org.amnezia.awg.fragment.AppListDialogFragment
 
 class StatsFragment : Fragment() {
 
@@ -19,6 +20,9 @@ class StatsFragment : Fragment() {
 
     /** Multi-Hop needs its subtitle rewritten whenever the hop count changes. */
     private var multiHopBinding: ItemToggleBinding? = null
+
+    /** Split Tunneling's subtitle needs rewriting whenever the selection changes. */
+    private var splitTunnelBinding: ItemToggleBinding? = null
 
     /** Redraws everything sourced from KapoState. Registered as a listener so the
      *  numbers stay correct even while this tab sits hidden behind Home. */
@@ -71,6 +75,31 @@ class StatsFragment : Fragment() {
             setToggleVisual(binding.toggleAdBlock, KapoState.adBlock, animate = true)
         }
 
+        // Split Tunneling opens an app picker rather than flipping a boolean, so
+        // it reuses item_toggle's layout/styling but hides the switch and treats
+        // the whole row as a navigation button. AppListDialogFragment (icon list,
+        // Exclude/Include tabs, "N apps" button text) already existed upstream
+        // for the legacy tunnel editor - this is its first KAPO caller.
+        splitTunnelBinding = binding.toggleSplitTunnel
+        binding.toggleSplitTunnel.tvToggleName.text = "Split Tunneling"
+        binding.toggleSplitTunnel.tvToggleDesc.text = splitTunnelDesc()
+        binding.toggleSplitTunnel.toggleSwitch.visibility = View.GONE
+        binding.toggleSplitTunnel.root.setOnClickListener {
+            val fragment = AppListDialogFragment.newInstance(
+                ArrayList(KapoState.splitTunnelApps),
+                KapoState.splitTunnelExcluded
+            )
+            childFragmentManager.setFragmentResultListener(
+                AppListDialogFragment.REQUEST_SELECTION, viewLifecycleOwner
+            ) { _, bundle ->
+                val selected = bundle.getStringArray(AppListDialogFragment.KEY_SELECTED_APPS)
+                    ?: return@setFragmentResultListener
+                val excluded = bundle.getBoolean(AppListDialogFragment.KEY_IS_EXCLUDED)
+                KapoState.setSplitTunnelApps(selected.toSet(), excluded)
+            }
+            fragment.show(childFragmentManager, null)
+        }
+
         // AmneziaWG is the live protocol. VLESS/Reality and Auto aren't built yet,
         // so they stay visible as tasteful "SOON" rows (slightly dimmed) that
         // explain themselves on tap instead of silently doing nothing.
@@ -99,6 +128,15 @@ class StatsFragment : Fragment() {
         else if (KapoState.hopCount == 2) "Routing through 2 countries"
         else "Route through a 2nd country"
 
+    private fun splitTunnelDesc(): String {
+        val n = KapoState.splitTunnelApps.size
+        return when {
+            n == 0 -> "All apps use the tunnel"
+            KapoState.splitTunnelExcluded -> if (n == 1) "1 app excluded" else "$n apps excluded"
+            else -> if (n == 1) "Only 1 app uses the tunnel" else "Only $n apps use the tunnel"
+        }
+    }
+
     /** Everything that reflects shared state, in one place. */
     private fun render() {
         val b = _binding ?: return
@@ -110,6 +148,7 @@ class StatsFragment : Fragment() {
             it.tvToggleDesc.text = multiHopDesc()
             setToggleVisual(it, KapoState.multiHop, animate = false)
         }
+        splitTunnelBinding?.tvToggleDesc?.text = splitTunnelDesc()
     }
 
     private fun setupToggle(
@@ -182,6 +221,7 @@ class StatsFragment : Fragment() {
     override fun onDestroyView() {
         KapoState.removeListener(onStateChanged)
         multiHopBinding = null
+        splitTunnelBinding = null
         _binding = null
         super.onDestroyView()
     }

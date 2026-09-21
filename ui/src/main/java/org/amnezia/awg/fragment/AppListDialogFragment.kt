@@ -104,8 +104,17 @@ class AppListDialogFragment : DialogFragment() {
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val alertDialogBuilder = MaterialAlertDialogBuilder(requireActivity())
-        val binding = AppListDialogFragmentBinding.inflate(requireActivity().layoutInflater, null, false)
+        // The embedded TabLayout (Exclude/Include) does a stricter runtime
+        // check than plain attribute resolution - it requires its inflation
+        // context's theme to actually descend from Theme.MaterialComponents,
+        // which Theme.KapoVPN (AppCompat-based) doesn't. Wrapped locally here
+        // rather than changing the app's theme, since this is the only KAPO
+        // screen that needs it.
+        val themedContext = android.view.ContextThemeWrapper(
+            requireActivity(), R.style.ThemeOverlay_KapoVPN_MaterialDialog
+        )
+        val alertDialogBuilder = MaterialAlertDialogBuilder(themedContext)
+        val binding = AppListDialogFragmentBinding.inflate(android.view.LayoutInflater.from(themedContext), null, false)
         binding.executePendingBindings()
         alertDialogBuilder.setView(binding.root)
         tabs = binding.tabs
