@@ -22,6 +22,7 @@ import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.AwgQuickBackend
 import org.amnezia.awg.configStore.FileConfigStore
 import org.amnezia.awg.model.TunnelManager
+import org.amnezia.awg.util.LeakMonitor
 import org.amnezia.awg.util.NetworkState
 import org.amnezia.awg.util.NetworkType
 import org.amnezia.awg.util.RootShell
@@ -117,6 +118,11 @@ class Application : android.app.Application() {
             Log.i(TAG, "NetworkState callback: Network changed: $oldType -> $newType")
             onNetworkChange(oldType, newType)
         }
+
+        // Passively re-runs SelfTestRunner's checks every 90s while a tunnel
+        // is up and alerts immediately on a failure, instead of a leak
+        // sitting unnoticed until someone remembers to run a manual check.
+        LeakMonitor.start(applicationContext, coroutineScope)
 
         coroutineScope.launch(Dispatchers.IO) {
             try {
