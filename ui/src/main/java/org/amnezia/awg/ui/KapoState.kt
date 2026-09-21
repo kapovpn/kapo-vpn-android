@@ -164,6 +164,28 @@ object KapoState {
         notifyChanged()
     }
 
+    /** Panic/duress wipe: reset every in-memory field to its fresh-install
+     *  default, not just connection/traffic. KapoState is a process-lifetime
+     *  singleton (not SharedPreferences-backed), so KapoVpn.panicWipe()
+     *  clearing prefs alone leaves stale toggle state (e.g. "3 apps
+     *  excluded") visible the moment someone logs back in - a forensic hint
+     *  a real wipe shouldn't leave behind. */
+    fun panicReset() {
+        connected = false
+        uploadBytes = 0L; downloadBytes = 0L
+        uploadRate = 0f; downloadRate = 0f
+        lastUpdateMs = 0L
+        hopCount = 1
+        adBlock = false
+        blockAdult = false
+        protocol = 0
+        splitTunnelApps = emptySet()
+        splitTunnelExcluded = true
+        selectedNode = "is"; selectedCity = "Reykjavik"; selectedCode = "IS"
+        selectedPing = "45 MS"; selectedFlag = "🇮🇸"
+        notifyChanged()
+    }
+
     fun resetTraffic() {
         uploadBytes = 0L
         downloadBytes = 0L

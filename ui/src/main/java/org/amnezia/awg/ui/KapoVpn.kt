@@ -191,6 +191,32 @@ object KapoVpn {
         Unit
     }
 
+    /**
+     * Panic/duress wipe: tear the tunnel down, delete its on-disk config
+     * (FileConfigStore persists the private key/assigned IP/obfuscation
+     * params separately from kapo_prefs - a plain prefs.clear() alone would
+     * leave that file behind), and erase every KAPO SharedPreferences key
+     * (the encrypted account credential, WireGuard keypair, enrollment
+     * cache). No confirmation, no toast - a real duress action can't ask
+     * "are you sure?" or announce what it did. The caller is responsible for
+     * resetting in-memory UI state (KapoState) and navigating to login.
+     */
+    suspend fun panicWipe(ctx: Context) = withContext(Dispatchers.IO) {
+        val mgr = Application.getTunnelManager()
+        mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.let { tunnel ->
+            try {
+                if (tunnel.state == Tunnel.State.UP) tunnel.setStateAsync(Tunnel.State.DOWN)
+                mgr.delete(tunnel)
+            } catch (_: Exception) {
+                // Even if config deletion fails, still wipe the credential below -
+                // a stray on-disk tunnel config with no account behind it is far
+                // less sensitive than the account itself surviving a wipe.
+            }
+        }
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        Unit
+    }
+
     suspend fun isUp(): Boolean = withContext(Dispatchers.IO) {
         val mgr = Application.getTunnelManager()
         mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.state == Tunnel.State.UP

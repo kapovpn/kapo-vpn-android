@@ -33,6 +33,12 @@ class HomeFragment : Fragment() {
     private val handler = Handler(Looper.getMainLooper())
     private var durationSeconds = 0
 
+    // Panic/duress wipe trigger: 5 taps on the brand wordmark within 2s.
+    // Deliberately undiscoverable in the UI (no hint text, no visual cue) -
+    // a gesture that announces itself defeats the point.
+    private var panicTapCount = 0
+    private var panicTapWindowStart = 0L
+
     companion object {
         private const val LICENSE_RECHECK_MS = 86_400_000L // once a day, per LicenseClient's own doc comment
     }
@@ -160,6 +166,19 @@ class HomeFragment : Fragment() {
                 ConnState.DISCONNECTED -> startConnection()
                 ConnState.CONNECTED -> stopConnection()
                 ConnState.CONNECTING -> {}
+            }
+        }
+
+        binding.brandWordmark.setOnClickListener {
+            val now = System.currentTimeMillis()
+            if (now - panicTapWindowStart > 2000L) {
+                panicTapCount = 0
+                panicTapWindowStart = now
+            }
+            panicTapCount++
+            if (panicTapCount >= 5) {
+                panicTapCount = 0
+                triggerPanicWipe()
             }
         }
 
@@ -419,6 +438,23 @@ class HomeFragment : Fragment() {
             ))
         } catch (_: Exception) {
             // Some OEMs don't expose this intent; the foreground service still runs.
+        }
+    }
+
+    /**
+     * Panic/duress wipe. No confirmation dialog, no toast, no visible
+     * acknowledgment beyond landing back on the login screen - a real duress
+     * action can't ask "are you sure?" or show a "Wiped!" message to whoever
+     * is watching over the user's shoulder at the time.
+     */
+    private fun triggerPanicWipe() {
+        val ctx = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) { KapoVpn.panicWipe(ctx) }
+            KapoState.panicReset()
+            if (_binding == null) return@launch
+            startActivity(Intent(requireContext(), LoginActivity::class.java))
+            requireActivity().finish()
         }
     }
 
