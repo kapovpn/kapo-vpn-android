@@ -48,6 +48,7 @@
             android:maxLines="1"
             android:text="@{key}"
             android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="@color/md_theme_dark_onSurface"
             tools:text="@tools:sample/full_names" />
 
         <CheckBox

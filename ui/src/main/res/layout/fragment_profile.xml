@@ -335,6 +335,52 @@
                 android:orientation="vertical"/>
         </LinearLayout>
 
+        <!-- Security card: documents the panic-wipe capability without describing
+             the trigger gesture - the feature stays discoverable, the gesture stays hidden. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_3d"
+            android:padding="20dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginTop="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="10dp">
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_shield"
+                    app:tint="@color/text_faint"
+                    android:layout_marginEnd="8dp"/>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="SECURITY"
+                    android:textColor="@color/text_faint"
+                    android:textSize="8sp"
+                    android:fontFamily="sans-serif-rounded"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.22"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This app has a built-in emergency wipe. If triggered, it instantly erases your saved login and tunnel config from this device only — no confirmation, no trace. Your account itself stays active on the server, so you can sign back in anytime with your account number, on this device or another."
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-rounded"
+                android:lineSpacingExtra="3dp"/>
+        </LinearLayout>
+
         <View android:layout_width="match_parent" android:layout_height="16dp"/>
 
         <!-- Logout -->
