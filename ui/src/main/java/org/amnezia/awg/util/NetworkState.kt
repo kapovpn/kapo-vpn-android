@@ -15,6 +15,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET
 import android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED
 import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
+import android.net.NetworkCapabilities.TRANSPORT_VPN
 import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.net.NetworkRequest
 import android.os.Build
@@ -147,7 +148,8 @@ class NetworkState(
             private fun validatedWifiElsewhere(network: Network): Boolean =
                 connectivityManager.allNetworks.any { other ->
                     val caps = if (other == network) null else connectivityManager.getNetworkCapabilities(other)
-                    caps != null && caps.hasTransport(TRANSPORT_WIFI) &&
+                    // Not a VPN (KAPO's own network carries the Wi-Fi transport underneath it).
+                    caps != null && caps.hasTransport(TRANSPORT_WIFI) && !caps.hasTransport(TRANSPORT_VPN) &&
                         caps.hasCapability(NET_CAPABILITY_INTERNET) && caps.hasCapability(NET_CAPABILITY_VALIDATED)
                 }
 
