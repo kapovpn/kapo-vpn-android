@@ -34,6 +34,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 
 /**
  * Maintains and mediates changes to the set of available Kapo VPN tunnels.
@@ -232,6 +234,33 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
             if (newState == Tunnel.State.UP)
                 lastUsedTunnel = tunnel
         } catch (e: Throwable) {
+            throwable = e
+        }
+        tunnel.onStateChanged(newState)
+        saveState()
+        if (throwable != null)
+            throw throwable
+        newState
+    }
+
+    /**
+     * Rebuild a running tunnel on its own config without taking it down first (after a network
+     * change). The backend only rebuilds when it is handed a config object other than the one
+     * running, so this passes a fresh copy; GoBackend then swaps the tun make-before-break. The
+     * old way, DOWN then UP half a second later, left the phone on the plain network in between.
+     */
+    suspend fun reconnectInPlace(tunnel: ObservableTunnel): Tunnel.State = withContext(Dispatchers.Main.immediate) {
+        if (tunnel.state != Tunnel.State.UP)
+            return@withContext tunnel.state
+        val config = tunnel.getConfigAsync()
+        val copy = Config.parse(ByteArrayInputStream(config.toAwgQuickString().toByteArray(StandardCharsets.UTF_8)))
+        var newState = tunnel.state
+        var throwable: Throwable? = null
+        try {
+            newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, Tunnel.State.UP, copy) }
+        } catch (e: Throwable) {
+            // The backend reports a real DOWN itself; ask it rather than guess.
+            newState = withContext(Dispatchers.IO) { getBackend().getState(tunnel) }
             throwable = e
         }
         tunnel.onStateChanged(newState)

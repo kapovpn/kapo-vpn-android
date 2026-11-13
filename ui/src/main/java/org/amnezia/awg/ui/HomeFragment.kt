@@ -111,6 +111,11 @@ class HomeFragment : Fragment() {
             // counter, so it survives app restarts. See that function's doc.
             if (durationSeconds % 60 == 0) maybeRecheckLicense()
 
+            // The tunnel can go down without the user tapping anything (a failed rebuild,
+            // another VPN app taking over, KAPO switched off in Android's settings). Home
+            // must not keep saying PROTECTED then.
+            if (durationSeconds % 5 == 0) checkStillUp()
+
             handler.postDelayed(this, 1000)
         }
     }
@@ -148,6 +153,15 @@ class HomeFragment : Fragment() {
                     else "Your account has expired. Add more time at kapovpn.com."
                 )
             }
+        }
+    }
+
+    private fun checkStillUp() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val up = KapoVpn.isUp()
+            if (_binding == null || up || state != ConnState.CONNECTED) return@launch
+            resetDisconnectedUi()
+            Toast.makeText(requireContext(), "KAPO VPN stopped. You are not protected.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -224,14 +238,26 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /** Reconnect on a new route: disconnect, flip the selector, reconnect. */
+    /** Reconnect on a new route while the tunnel stays up (see beginInPlaceSwitch). */
     private fun switchHop(n: Int) {
-        stopConnection()
+        beginInPlaceSwitch("SWITCHING ROUTE...")
         selectHop(n)
-        binding.tvSub.text = "SWITCHING ROUTE..."
-        handler.postDelayed({
-            if (state == ConnState.DISCONNECTED && _binding != null) startConnection()
-        }, 400)
+        doConnect()
+    }
+
+    /**
+     * A route/location/setting change while connected. The tunnel is NOT taken down first:
+     * KapoVpn.connect() hands the running tunnel its new config and GoBackend rebuilds it in
+     * place, make-before-break. Disconnecting first (as this used to) left the phone on the
+     * plain network with its real IP for as long as the enrolment took. CONNECTING also keeps
+     * onStateChanged and the hop buttons from starting a second switch meanwhile.
+     */
+    private fun beginInPlaceSwitch(label: String) {
+        state = ConnState.CONNECTING
+        handler.removeCallbacks(durationRunnable)
+        binding.btnConnect.state = KapoOrbButton.State.CONNECTING
+        binding.routeRing.setMode(KapoRouteRingView.Mode.CONNECTING)
+        binding.tvSub.text = label
     }
 
     private fun selectHop(n: Int) {
@@ -395,18 +421,17 @@ class HomeFragment : Fragment() {
                 connectedChain = chain; connectedAdblock = adblock; connectedAdult = adult
                 connectedSplitTunnelApps = splitApps; connectedSplitTunnelExcluded = splitExcluded
                 onConnected()
+                // Something changed while this was connecting: switch again, in place.
+                onStateChanged()
             }
             else revertToDisconnected(enrollError(res.status))
         }
     }
 
-    /** User picked a different location while connected: drop + reconnect there. */
+    /** User picked a different location (or setting) while connected: reconnect there in place. */
     private fun switchServer() {
-        stopConnection()
-        binding.tvSub.text = "SWITCHING LOCATION..."
-        handler.postDelayed({
-            if (state == ConnState.DISCONNECTED && _binding != null) startConnection()
-        }, 400)
+        beginInPlaceSwitch("SWITCHING LOCATION...")
+        doConnect()
     }
 
     private fun onConnected() {

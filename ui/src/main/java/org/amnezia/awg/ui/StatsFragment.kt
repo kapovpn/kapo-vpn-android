@@ -1,14 +1,19 @@
 package org.amnezia.awg.ui
 
 import android.animation.ObjectAnimator
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.amnezia.awg.R
+import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.databinding.FragmentStatsBinding
 import org.amnezia.awg.databinding.ItemToggleBinding
 import org.amnezia.awg.fragment.AppListDialogFragment
@@ -24,6 +29,9 @@ class StatsFragment : Fragment() {
     /** Split Tunneling's subtitle needs rewriting whenever the selection changes. */
     private var splitTunnelBinding: ItemToggleBinding? = null
 
+    /** The Kill Switch row shows Android's real setting, re-read on every render. */
+    private var killSwitchBinding: ItemToggleBinding? = null
+
     /** Redraws everything sourced from KapoState. Registered as a listener so the
      *  numbers stay correct even while this tab sits hidden behind Home. */
     private val onStateChanged: () -> Unit = { render() }
@@ -36,16 +44,18 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Kill Switch and DNS Protection are NOT user-togglable: the tunnel is
-        // always built full-tunnel (AllowedIPs = 0.0.0.0/0, ::/0) with
-        // setBlocking(true) in GoBackend, so non-tunnel traffic is already
-        // blocked outright whenever the interface is up, and DNS is always the
-        // server-assigned resolver from enrollment - neither depends on a
-        // setting. Leaving these interactive (as they used to be) let a user
-        // believe they'd turned protection off when nothing actually read the
-        // switch. Same fix already shipped on the Windows client - see its
-        // MainWindow.xaml comment for the same reasoning. Shown as status here.
-        setupAlwaysOn(binding.toggleKillSwitch, "Kill Switch", "Always on - blocks traffic if the tunnel drops")
+        // DNS Protection is NOT user-togglable: DNS is always the server-assigned
+        // resolver from enrollment. Shown as status here.
+        //
+        // The Kill Switch is not KAPO's to promise. While the tunnel runs, all
+        // traffic goes into it; once it stops (a crash, an update, another VPN app,
+        // a failed reconnect) only Android's own "Block connections without VPN"
+        // keeps apps offline, and an app can read that setting but not set it. The
+        // row used to say "Always on" regardless; now it shows Android's real
+        // setting and a tap leads to where it is turned on.
+        killSwitchBinding = binding.toggleKillSwitch
+        binding.toggleKillSwitch.tvToggleName.text = "Kill Switch"
+        binding.toggleKillSwitch.root.setOnClickListener { explainKillSwitch() }
         setupAlwaysOn(binding.toggleDns, "DNS Protection", "Always on - DNS locked to the assigned resolver")
 
         // Multi-Hop is live: this row is a quick 1<->2 hop switch (3-hop lives on
@@ -149,6 +159,26 @@ class StatsFragment : Fragment() {
             setToggleVisual(it, KapoState.multiHop, animate = false)
         }
         splitTunnelBinding?.tvToggleDesc?.text = splitTunnelDesc()
+        killSwitchBinding?.let {
+            val ks = GoBackend.getKillSwitchState()
+            it.tvToggleDesc.text = KillSwitchText.describe(ks)
+            setToggleVisual(it, KillSwitchText.isOn(ks), animate = false)
+        }
+    }
+
+    private fun explainKillSwitch() {
+        MaterialAlertDialogBuilder(requireContext(), R.style.ThemeOverlay_KapoVPN_MaterialDialog)
+            .setTitle("Kill Switch")
+            .setMessage(KillSwitchText.EXPLAINER)
+            .setPositiveButton("Open VPN settings") { _, _ ->
+                try {
+                    startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+                } catch (_: ActivityNotFoundException) {
+                    Toast.makeText(requireContext(), "Open Settings > Network > VPN", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupToggle(
@@ -222,6 +252,7 @@ class StatsFragment : Fragment() {
         KapoState.removeListener(onStateChanged)
         multiHopBinding = null
         splitTunnelBinding = null
+        killSwitchBinding = null
         _binding = null
         super.onDestroyView()
     }

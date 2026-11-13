@@ -322,6 +322,15 @@ public final class GoBackend implements Backend {
             state = originalState == State.UP ? State.DOWN : State.UP;
         if (state == originalState && tunnel == currentTunnel && config == currentConfig)
             return originalState;
+        // A new config for the tunnel that is running (a network change, KapoVpn.connect on a
+        // new location or setting): rebuild it make-before-break. Taking it down first, as
+        // below, left a moment with no tun at all, and with Android's "Block connections
+        // without VPN" off apps used the plain network with the real IP then. The service has
+        // to be running for it; if it is on its way out, the old way below still works.
+        if (state == State.UP && tunnel == currentTunnel && currentTunnelHandle != -1 && vpnService.isDone()) {
+            rebuildInPlace(tunnel, config);
+            return getState(tunnel);
+        }
         if (state == State.UP) {
             final Config originalConfig = currentConfig;
             final Tunnel originalTunnel = currentTunnel;
@@ -372,84 +381,13 @@ public final class GoBackend implements Backend {
             }
 
 
-            dnsRetry: for (int i = 0; i < DNS_RESOLUTION_RETRIES; ++i) {
-                // Pre-resolve IPs so they're cached when building the userspace string
-                for (final Peer peer : config.getPeers()) {
-                    final InetEndpoint ep = peer.getEndpoint().orElse(null);
-                    if (ep == null)
-                        continue;
-                    if (ep.getResolved().orElse(null) == null) {
-                        if (i < DNS_RESOLUTION_RETRIES - 1) {
-                            Log.w(TAG, "DNS host \"" + ep.getHost() + "\" failed to resolve; trying again");
-                            Thread.sleep(1000);
-                            continue dnsRetry;
-                        } else
-                            throw new BackendException(Reason.DNS_RESOLUTION_FAILURE, ep.getHost());
-                    }
-                }
-                break;
-            }
+            resolveEndpoints(config);
 
             // Build config
             final String goConfig = config.toAwgUserspaceString();
 
             // Create the vpn tunnel with android API
-            final VpnService.Builder builder = service.getBuilder();
-            builder.setSession(tunnel.getName());
-
-            // A split-tunnel app uninstalled since the config was saved makes these throw,
-            // which used to stop the tunnel coming up at all (and on a reconnect, left it
-            // silently down). Skipping it only ever puts more traffic inside the tunnel,
-            // never less: a missing excluded app has nothing to exclude, and a missing
-            // included app just isn't added. The package name is deliberately not logged.
-            for (final String excludedApplication : config.getInterface().getExcludedApplications()) {
-                try {
-                    builder.addDisallowedApplication(excludedApplication);
-                } catch (final PackageManager.NameNotFoundException e) {
-                    Log.w(TAG, "Skipping an excluded app that is no longer installed");
-                }
-            }
-
-            for (final String includedApplication : config.getInterface().getIncludedApplications()) {
-                try {
-                    builder.addAllowedApplication(includedApplication);
-                } catch (final PackageManager.NameNotFoundException e) {
-                    Log.w(TAG, "Skipping an included app that is no longer installed");
-                }
-            }
-
-            for (final InetNetwork addr : config.getInterface().getAddresses())
-                builder.addAddress(addr.getAddress(), addr.getMask());
-
-            for (final InetAddress addr : config.getInterface().getDnsServers())
-                builder.addDnsServer(addr.getHostAddress());
-
-            for (final String dnsSearchDomain : config.getInterface().getDnsSearchDomains())
-                builder.addSearchDomain(dnsSearchDomain);
-
-            boolean sawDefaultRoute = false;
-            for (final Peer peer : config.getPeers()) {
-                for (final InetNetwork addr : peer.getAllowedIps()) {
-                    if (addr.getMask() == 0)
-                        sawDefaultRoute = true;
-                    builder.addRoute(addr.getAddress(), addr.getMask());
-                }
-            }
-
-            // "Kill-switch" semantics
-            if (!(sawDefaultRoute && config.getPeers().size() == 1)) {
-                builder.allowFamily(OsConstants.AF_INET);
-                builder.allowFamily(OsConstants.AF_INET6);
-            }
-
-            builder.setMtu(config.getInterface().getMtu().orElse(1280));
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                builder.setMetered(false);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-                service.setUnderlyingNetworks(null);
-
-            builder.setBlocking(true);
+            final VpnService.Builder builder = newBuilder(service, tunnel, config);
             try (final ParcelFileDescriptor tun = builder.establish()) {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
@@ -492,6 +430,253 @@ public final class GoBackend implements Backend {
         }
 
         tunnel.onStateChange(state);
+    }
+
+    /**
+     * Rebuild the running tunnel on a new config, make-before-break:
+     * <ol>
+     * <li>establish() the new tun while the old one still runs. Android moves the routes over to
+     * the new interface before it drops the old one, so until awg reads the new tun, packets
+     * wait in it or are dropped. They never go out on the plain network.</li>
+     * <li>Turn the old awg handle off. Go owns the old tun's fd since it was detached at turn-on,
+     * and closing the device closes it.</li>
+     * <li>Turn awg on with the new tun and protect() its sockets.</li>
+     * </ol>
+     * The old handle goes off before the new one comes on, so only one awg handle ever runs
+     * (two with the same key would take turns being the one the server answers). No stopSelf()
+     * and no DOWN in between: only a real DOWN stops the service.
+     * <p>
+     * Anything that fails before establish() has returned a tun leaves the old tunnel running as
+     * it was, and the exception goes to the caller, which keeps the old config. If the new handle
+     * fails to start, the config that was running goes back on the new tun, which a second hold on
+     * it keeps open, so even then there is no moment without a tun.
+     */
+    private void rebuildInPlace(final Tunnel tunnel, @Nullable final Config config) throws Exception {
+        Log.i(TAG, "Rebuilding tunnel " + tunnel.getName() + " in place");
+        if (config == null)
+            throw new BackendException(Reason.TUNNEL_MISSING_CONFIG);
+        if (VpnService.prepare(context) != null)
+            throw new BackendException(Reason.VPN_NOT_AUTHORIZED);
+        final VpnService service = vpnService.get(0, TimeUnit.NANOSECONDS);
+        service.setOwner(this);
+
+        // Through the old tunnel, which is still up.
+        resolveEndpoints(config);
+        final String goConfig = config.toAwgUserspaceString();
+        final VpnService.Builder builder = newBuilder(service, tunnel, config);
+
+        // Outside the lock: a binder call into Android, which onDestroy shouldn't wait on. Null:
+        // Android refused the new interface, and the old one is untouched. Keep it.
+        final ParcelFileDescriptor tun = builder.establish();
+        if (tun == null)
+            throw new BackendException(Reason.TUN_CREATION_ERROR);
+        try {
+            synchronized (stateLock) {
+                swapHandles(service, tunnel, config, goConfig, tun);
+            }
+        } finally {
+            // Does nothing once the fd was handed to Go (detachFd()): it is for a throw before it.
+            tun.close();
+        }
+    }
+
+    /** The part of {@link #rebuildInPlace} that turns the old handle off and the new one on. */
+    private void swapHandles(final VpnService service, final Tunnel tunnel, final Config config, final String goConfig,
+                             final ParcelFileDescriptor tun) throws Exception {
+        // onDestroy got there first: it took the old tunnel down and told the app. There is
+        // nothing to replace, and the new tun closes with the caller's finally.
+        if (!vpnService.isDone() || vpnService.get(0, TimeUnit.NANOSECONDS) != service ||
+                currentTunnel != tunnel || currentTunnelHandle == -1)
+            throw new BackendException(Reason.UNABLE_TO_START_VPN);
+        final Config originalConfig = currentConfig;
+
+        // A second hold on the new tun. If the new handle fails to start, Go closes the fd it was
+        // given, and with no fd left open Android would drop the interface. This keeps it there
+        // for the config that was running.
+        ParcelFileDescriptor spare = null;
+        try {
+            spare = tun.dup();
+        } catch (final Exception e) {
+            Log.w(TAG, "Couldn't keep a second hold on the new tun", e);
+        }
+
+        int newHandle = -1;
+        Exception startError = null;
+        stopStatusJob();
+        final int oldHandle = currentTunnelHandle;
+        // Nothing may read the old handle once it is off (statistics, the status job).
+        currentTunnelHandle = -1;
+        awgTurnOff(oldHandle);
+        try {
+            // Go owns the fd from here, and closes it itself if it fails.
+            newHandle = awgTurnOn(tunnel.getName(), tun.detachFd(), goConfig);
+        } catch (final Exception e) {
+            startError = e;
+        }
+
+        Config running = config;
+        if (newHandle < 0 && spare != null && originalConfig != null) {
+            Log.e(TAG, "New tunnel failed to start (" + newHandle + "); going back to the old config on the same tun", startError);
+            try {
+                final int spareFd = spare.detachFd();
+                spare = null;   // Go owns it now, and closes it itself if it fails
+                newHandle = awgTurnOn(tunnel.getName(), spareFd, originalConfig.toAwgUserspaceString());
+                running = originalConfig;
+            } catch (final Exception e) {
+                Log.e(TAG, "Going back to the old config on the same tun failed", e);
+            }
+        }
+        if (spare != null) {
+            try {
+                spare.close();
+            } catch (final Exception ignored) { }
+        }
+
+        if (newHandle < 0) {
+            // The old handle is off and the new tun is closed: no tunnel now. This is a real
+            // DOWN and is told as one, so the app (Home, the leak monitor) can show and alert it.
+            Log.e(TAG, "New tunnel failed to start (" + newHandle + ")", startError);
+            currentTunnel = null;
+            currentConfig = null;
+            try {
+                service.stopSelf();
+            } catch (final RuntimeException ignored) { }
+            tunnel.onStateChange(State.DOWN);
+            final BackendException failure = new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, newHandle);
+            if (startError != null)
+                failure.initCause(startError);
+            throw failure;
+        }
+
+        currentTunnelHandle = newHandle;
+        currentConfig = running;
+
+        service.protect(awgGetSocketV4(newHandle));
+        service.protect(awgGetSocketV6(newHandle));
+
+        // The new handle has had no handshake yet: "connecting" until the status job sees one.
+        if (statusCallback != null)
+            statusCallback.onStatusChanged(false);
+        launchStatusJob();
+        tunnel.onStateChange(State.UP);
+
+        // Back on the old config: the new one failed, and the caller must keep the old one.
+        if (running != config) {
+            final BackendException failure = new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, -1);
+            if (startError != null)
+                failure.initCause(startError);
+            throw failure;
+        }
+    }
+
+    /** Pre-resolve the endpoints, so they're cached when building the userspace string. */
+    private static void resolveEndpoints(final Config config) throws Exception {
+        dnsRetry: for (int i = 0; i < DNS_RESOLUTION_RETRIES; ++i) {
+            for (final Peer peer : config.getPeers()) {
+                final InetEndpoint ep = peer.getEndpoint().orElse(null);
+                if (ep == null)
+                    continue;
+                if (ep.getResolved().orElse(null) == null) {
+                    if (i < DNS_RESOLUTION_RETRIES - 1) {
+                        Log.w(TAG, "DNS host \"" + ep.getHost() + "\" failed to resolve; trying again");
+                        Thread.sleep(1000);
+                        continue dnsRetry;
+                    } else
+                        throw new BackendException(Reason.DNS_RESOLUTION_FAILURE, ep.getHost());
+                }
+            }
+            break;
+        }
+    }
+
+    /** Everything about the tun Android is asked for, ready for establish(). */
+    private static VpnService.Builder newBuilder(final VpnService service, final Tunnel tunnel, final Config config) {
+        final VpnService.Builder builder = service.getBuilder();
+        builder.setSession(tunnel.getName());
+
+        // A split-tunnel app uninstalled since the config was saved makes these throw,
+        // which used to stop the tunnel coming up at all (and on a reconnect, left it
+        // silently down). Skipping it only ever puts more traffic inside the tunnel,
+        // never less: a missing excluded app has nothing to exclude, and a missing
+        // included app just isn't added. The package name is deliberately not logged.
+        for (final String excludedApplication : config.getInterface().getExcludedApplications()) {
+            try {
+                builder.addDisallowedApplication(excludedApplication);
+            } catch (final PackageManager.NameNotFoundException e) {
+                Log.w(TAG, "Skipping an excluded app that is no longer installed");
+            }
+        }
+
+        for (final String includedApplication : config.getInterface().getIncludedApplications()) {
+            try {
+                builder.addAllowedApplication(includedApplication);
+            } catch (final PackageManager.NameNotFoundException e) {
+                Log.w(TAG, "Skipping an included app that is no longer installed");
+            }
+        }
+
+        for (final InetNetwork addr : config.getInterface().getAddresses())
+            builder.addAddress(addr.getAddress(), addr.getMask());
+
+        for (final InetAddress addr : config.getInterface().getDnsServers())
+            builder.addDnsServer(addr.getHostAddress());
+
+        for (final String dnsSearchDomain : config.getInterface().getDnsSearchDomains())
+            builder.addSearchDomain(dnsSearchDomain);
+
+        boolean sawDefaultRoute = false;
+        for (final Peer peer : config.getPeers()) {
+            for (final InetNetwork addr : peer.getAllowedIps()) {
+                if (addr.getMask() == 0)
+                    sawDefaultRoute = true;
+                builder.addRoute(addr.getAddress(), addr.getMask());
+            }
+        }
+
+        // "Kill-switch" semantics, only while the interface exists. After a real DOWN only
+        // Android's own "Block connections without VPN" keeps traffic in (see getKillSwitchState).
+        if (!(sawDefaultRoute && config.getPeers().size() == 1)) {
+            builder.allowFamily(OsConstants.AF_INET);
+            builder.allowFamily(OsConstants.AF_INET6);
+        }
+
+        builder.setMtu(config.getInterface().getMtu().orElse(1280));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            builder.setMetered(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            service.setUnderlyingNetworks(null);
+
+        builder.setBlocking(true);
+        return builder;
+    }
+
+    /** Whether Android's "Always-on VPN" and "Block connections without VPN" apply to this app. */
+    public enum KillSwitchState {
+        /** Too old an Android to ask, or the VPN service isn't running. */
+        UNKNOWN,
+        OFF,
+        /** Android restarts the VPN, but lets traffic out while it's down. */
+        ALWAYS_ON_ONLY,
+        /** "Block connections without VPN". */
+        ON
+    }
+
+    /**
+     * Whether Android's "Always-on VPN" and "Block connections without VPN" apply to this app.
+     * Android only answers on a running VpnService (API 29+). An app can read this but not set it.
+     */
+    public static KillSwitchState getKillSwitchState() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !vpnService.isDone())
+            return KillSwitchState.UNKNOWN;
+        try {
+            final VpnService service = vpnService.get(0, TimeUnit.NANOSECONDS);
+            if (service.isLockdownEnabled())
+                return KillSwitchState.ON;
+            return service.isAlwaysOn() ? KillSwitchState.ALWAYS_ON_ONLY : KillSwitchState.OFF;
+        } catch (final Exception e) {
+            return KillSwitchState.UNKNOWN;
+        }
     }
 
     /**

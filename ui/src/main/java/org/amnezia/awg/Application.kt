@@ -173,12 +173,12 @@ class Application : android.app.Application() {
 
                 for (tunnel in activeTunnels) {
                     try {
-                        Log.d(TAG, "Disconnecting tunnel: ${tunnel.name}")
-                        // Toggle tunnel off and on to reconnect
-                        tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.DOWN)
-                        kotlinx.coroutines.delay(500) // Small delay for cleanup
-                        Log.d(TAG, "Reconnecting tunnel: ${tunnel.name}")
-                        tunnel.setStateAsync(org.amnezia.awg.backend.Tunnel.State.UP)
+                        // Rebuilt in place, make-before-break: a DOWN, half a second, then UP
+                        // (as this used to do) left every app on the plain network with the
+                        // real IP in between, unless Android's "Block connections without
+                        // VPN" was on.
+                        Log.d(TAG, "Reconnecting tunnel in place: ${tunnel.name}")
+                        tunnelManager.reconnectInPlace(tunnel)
                         Log.i(TAG, "Successfully reconnected tunnel: ${tunnel.name}")
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to reconnect tunnel ${tunnel.name}", e)
