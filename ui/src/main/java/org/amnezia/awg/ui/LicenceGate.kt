@@ -71,6 +71,18 @@ object LicenceGate {
     }
 
     /**
+     * Extra advice when KAPO stops for [status] while Android's "Block connections without VPN"
+     * is on ([blockOn]): then the phone has no internet at all, not even to reach the renew page.
+     * Only for an ended plan, the case the user can fix by renewing. Null when not needed.
+     */
+    fun renewHint(status: String, blockOn: Boolean): String? =
+        if (blockOn && status == "expired")
+            "Android's \"Block connections without VPN\" is on, so the phone is offline now. To renew, " +
+                "turn that setting off for a moment (Settings > Network > VPN > KAPO VPN) or use another " +
+                "device, then open kapovpn.com."
+        else null
+
+    /**
      * May the KAPO tunnel be raised without a new enrolment (quick tile, boot, Always-on, app
      * start)? Only refused after the server has said no ([refusedStatus] is what it said);
      * nothing stored, as after an update from an older version, means yes.

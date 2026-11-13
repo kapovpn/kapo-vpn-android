@@ -73,6 +73,14 @@ class LicenceGateTest {
     }
 
     @Test
+    fun renewHintOnlyWhenBlockIsOnAndThePlanEnded() {
+        val hint = LicenceGate.renewHint("expired", blockOn = true)
+        assertTrue(hint != null && hint.contains("Block connections without VPN") && hint.contains("kapovpn.com"))
+        assertEquals(null, LicenceGate.renewHint("expired", blockOn = false))
+        assertEquals(null, LicenceGate.renewHint("revoked", blockOn = true))
+    }
+
+    @Test
     fun unreachableKeepsTheTunnel() {
         // Offline, a timeout, an outage or a blocked server: LicenseClient's network_error.
         assertEquals(Recheck.RETRY, LicenceGate.outcome(fromServer = false, valid = false, status = "network_error"))

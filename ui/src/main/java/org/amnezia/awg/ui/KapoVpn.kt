@@ -5,6 +5,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.provider.MediaStore.MediaColumns
 import org.amnezia.awg.Application
+import org.amnezia.awg.backend.GoBackend
 import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.config.Config
 import org.amnezia.awg.crypto.Key
@@ -251,6 +252,10 @@ object KapoVpn {
         val existing = mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }
         // Protection was on (or meant to be): then this really turns it off, and says so.
         val wasOn = isWanted(ctx) || existing?.state == Tunnel.State.UP
+        // Read before the tunnel goes down: Android only reports it while the VPN runs.
+        val blockOn = try {
+            GoBackend.getKillSwitchState() == GoBackend.KillSwitchState.ON
+        } catch (_: Exception) { false }
         setWanted(ctx, false)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_REFUSED, status).commit()
@@ -267,7 +272,13 @@ object KapoVpn {
         } catch (_: Exception) { }
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .remove(KEY_ENROLL).remove(KEY_ENROLL_AT).remove(KEY_VALIDATED).commit()
-        if (wasOn) LeakMonitor.notifyProtectionStopped(ctx, accountProblemText(status))
+        if (wasOn) {
+            val hint = LicenceGate.renewHint(status, blockOn)
+            LeakMonitor.notifyProtectionStopped(ctx,
+                if (hint == null) accountProblemText(status) else accountProblemText(status) + "
+
+" + hint)
+        }
         Unit
     }
 
