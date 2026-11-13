@@ -27,6 +27,14 @@ class KillSwitchTextTest {
     }
 
     @Test
+    fun oldAndroidIsNotAskedToConnect() {
+        // Below Android 10 the state is always unknown, even while connected.
+        val old = KillSwitchText.describe(KillSwitchState.UNKNOWN, 28)
+        assertFalse(old, old.startsWith("Connect to check"))
+        assertTrue(KillSwitchText.describe(KillSwitchState.UNKNOWN, 29).startsWith("Connect to check"))
+    }
+
+    @Test
     fun offStatesSayOff() {
         assertTrue(KillSwitchText.describe(KillSwitchState.OFF).startsWith("Off"))
         assertTrue(KillSwitchText.describe(KillSwitchState.ALWAYS_ON_ONLY).startsWith("Off"))

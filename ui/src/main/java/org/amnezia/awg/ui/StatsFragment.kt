@@ -161,7 +161,7 @@ class StatsFragment : Fragment() {
         splitTunnelBinding?.tvToggleDesc?.text = splitTunnelDesc()
         killSwitchBinding?.let {
             val ks = GoBackend.getKillSwitchState()
-            it.tvToggleDesc.text = KillSwitchText.describe(ks)
+            it.tvToggleDesc.text = KillSwitchText.describe(ks, android.os.Build.VERSION.SDK_INT)
             setToggleVisual(it, KillSwitchText.isOn(ks), animate = false)
         }
     }

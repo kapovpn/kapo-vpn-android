@@ -10,14 +10,19 @@ import org.amnezia.awg.backend.GoBackend
 internal object KillSwitchText {
     fun isOn(state: GoBackend.KillSwitchState): Boolean = state == GoBackend.KillSwitchState.ON
 
-    fun describe(state: GoBackend.KillSwitchState): String = when (state) {
+    /** Android 10 (API 29) is the first that lets an app read the setting. */
+    private const val FIRST_SDK_THAT_REPORTS = 29
+
+    fun describe(state: GoBackend.KillSwitchState, sdkInt: Int = FIRST_SDK_THAT_REPORTS): String = when (state) {
         GoBackend.KillSwitchState.ON ->
             "On: Android blocks all traffic if the VPN stops"
         GoBackend.KillSwitchState.ALWAYS_ON_ONLY ->
             "Off: Always-on is on, but traffic isn't blocked if the VPN stops - tap to turn on"
         GoBackend.KillSwitchState.OFF ->
             "Off: traffic goes out unprotected if the VPN stops - tap to turn on"
-        GoBackend.KillSwitchState.UNKNOWN ->
+        GoBackend.KillSwitchState.UNKNOWN -> if (sdkInt < FIRST_SDK_THAT_REPORTS)
+            "This Android version can't report it. Check \"Block connections without VPN\" yourself - tap for VPN settings"
+        else
             "Connect to check. Relies on Android's \"Block connections without VPN\" - tap for VPN settings"
     }
 
