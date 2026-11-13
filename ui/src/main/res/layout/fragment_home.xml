@@ -277,7 +277,7 @@
                         android:layout_marginEnd="8dp"/>
                     <TextView
                         android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="Kill switch" android:textColor="@color/text_muted"
+                        android:text="Kill switch: phone setting" android:textColor="@color/text_muted"
                         android:textSize="11sp" android:background="@drawable/bg_pill_glass"
                         android:paddingStart="12dp" android:paddingEnd="12dp"
                         android:paddingTop="7dp" android:paddingBottom="7dp"/>
