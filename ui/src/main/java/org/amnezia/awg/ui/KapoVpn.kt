@@ -308,19 +308,20 @@ object KapoVpn {
      * resetting in-memory UI state (KapoState) and navigating to login.
      */
     suspend fun panicWipe(ctx: Context) = withContext(Dispatchers.IO) {
-        wipeLocalData(ctx)
+        wipeLocalData(ctx, alsoLogs = true)
     }
 
     /**
-     * Sign out: the same wipe as panicWipe. Logout used to clear only kapo_prefs, so the
+     * Sign out: the same wipe as panicWipe, except that logs the user saved to Downloads stay
+     * (an export zip with keys still goes). Logout used to clear only kapo_prefs, so the
      * signed-out account's tunnel (KAPO.conf with the WireGuard private key, endpoint and
      * address) stayed on the phone and the quick tile or the next app start could raise it.
      */
     suspend fun logout(ctx: Context) = withContext(Dispatchers.IO) {
-        wipeLocalData(ctx)
+        wipeLocalData(ctx, alsoLogs = false)
     }
 
-    private suspend fun wipeLocalData(ctx: Context) {
+    private suspend fun wipeLocalData(ctx: Context, alsoLogs: Boolean) {
         val mgr = Application.getTunnelManager()
         mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.let { tunnel ->
             try {
@@ -341,18 +342,20 @@ object KapoVpn {
         // commit(), not apply(): the caller shows the login screen next, and the app may be
         // closed right after; the wipe must be on disk by then.
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit()
-        deleteOwnDownloads(ctx)
+        deleteOwnDownloads(ctx, alsoLogs)
     }
 
     /**
      * Copies this app itself put in Downloads: an old "export tunnels" zip (every tunnel's
-     * private key, in plain text) and saved logs. Android 10+ only lists an app's own entries
+     * private key, in plain text) and, with [alsoLogs], saved logs. Android 10+ only lists an app's own entries
      * in Downloads, so nothing else the user saved is touched. Best effort: after a reinstall
      * Android no longer counts old files as this app's, and those must be deleted by hand.
      */
-    private fun deleteOwnDownloads(ctx: Context) {
+    private fun deleteOwnDownloads(ctx: Context, alsoLogs: Boolean) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        for (pattern in arrayOf("amneziawg-export%.zip", "amneziawg-log%.txt")) {
+        val patterns = if (alsoLogs) arrayOf("amneziawg-export%.zip", "amneziawg-log%.txt")
+                       else arrayOf("amneziawg-export%.zip")
+        for (pattern in patterns) {
             try {
                 ctx.contentResolver.delete(
                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
