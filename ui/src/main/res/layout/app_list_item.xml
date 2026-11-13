@@ -25,14 +25,15 @@
         android:background="@drawable/list_item_background"
         android:gravity="center_vertical"
         android:onClick="@{(view) -> item.setSelected(!item.selected)}"
+        android:minHeight="56dp"
         android:orientation="horizontal"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
         <ImageView
             android:id="@+id/app_icon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_marginStart="16dp"
             android:src="@{item.icon}"
             tools:src="@tools:sample/avatars" />
@@ -48,6 +49,7 @@
             android:maxLines="1"
             android:text="@{key}"
             android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textSize="16sp"
             android:textColor="@color/md_theme_dark_onSurface"
             tools:text="@tools:sample/full_names" />
 
