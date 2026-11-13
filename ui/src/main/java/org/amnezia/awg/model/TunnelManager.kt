@@ -22,6 +22,7 @@ import org.amnezia.awg.backend.StatusCallback
 import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.configStore.ConfigStore
 import org.amnezia.awg.databinding.ObservableSortedKeyedArrayList
+import org.amnezia.awg.ui.KapoVpn
 import org.amnezia.awg.util.ErrorMessages
 import org.amnezia.awg.util.UserKnobs
 import org.amnezia.awg.util.applicationScope
@@ -233,6 +234,12 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
             newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, state, tunnel.getConfigAsync()) }
             if (newState == Tunnel.State.UP)
                 lastUsedTunnel = tunnel
+            // Every switch of KAPO (Home, the quick tile, boot, Always-on) goes through here,
+            // so this is where "the user wants it on/off" is recorded for LeakMonitor.
+            if (tunnel.name == KapoVpn.TUNNEL_NAME) {
+                if (newState == Tunnel.State.UP) KapoVpn.setWanted(context, true)
+                else if (state != Tunnel.State.UP) KapoVpn.setWanted(context, false)   // DOWN or a TOGGLE off
+            }
         } catch (e: Throwable) {
             throwable = e
         }

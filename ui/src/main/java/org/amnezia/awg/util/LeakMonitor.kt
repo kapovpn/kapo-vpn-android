@@ -59,9 +59,22 @@ object LeakMonitor {
     }
 
     private suspend fun checkOnce(ctx: Context) {
-        if (!KapoVpn.isUp()) {
-            lastAlertKey = null   // disconnected - re-arm for the next connection
-            return
+        when (TunnelWatch.decide(KapoVpn.isUp(), KapoVpn.isWanted(ctx))) {
+            TunnelWatch.Action.IDLE -> {
+                lastAlertKey = null   // switched off by the user - re-arm for the next connection
+                return
+            }
+            TunnelWatch.Action.ALERT_DROPPED -> {
+                // Down, and the user never switched it off (a failed reconnect, another VPN
+                // app, KAPO stopped in Android's settings). This used to return silently like
+                // a normal disconnect, so the "dropped" alert below could never fire.
+                val key = "Tunnel is up|dropped"
+                if (key == lastAlertKey) return
+                lastAlertKey = key
+                postAlert(ctx, "Tunnel is up", "")
+                return
+            }
+            TunnelWatch.Action.RUN_CHECKS -> Unit
         }
         val failed = SelfTestRunner.runAll().firstOrNull { !it.passed } ?: run {
             lastAlertKey = null   // everything passing - re-arm in case of a future leak

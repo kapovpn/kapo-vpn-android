@@ -20,8 +20,12 @@ import java.io.ByteArrayInputStream
  * through the app's existing, tested TunnelManager / GoBackend stack.
  */
 object KapoVpn {
-    private const val TUNNEL_NAME = "KAPO"
+    const val TUNNEL_NAME = "KAPO"
     private const val PREFS = "kapo_prefs"
+    // Whether the user wants KAPO connected: set when it comes up, cleared only when
+    // something asks for it to go down. The backend going down by itself leaves it set,
+    // which is how LeakMonitor tells a drop from a disconnect.
+    private const val KEY_WANTED = "tunnel_wanted"
     private const val KEY_PRIV = "wg_private_key"
     private const val KEY_ENROLL = "enroll_cache"
     private const val KEY_ENROLL_AT = "enroll_cache_at"
@@ -184,7 +188,16 @@ object KapoVpn {
             .remove(KEY_ENROLL).remove(KEY_ENROLL_AT).apply()
     }
 
+    fun isWanted(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_WANTED, false)
+
+    fun setWanted(ctx: Context, wanted: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_WANTED, wanted).apply()
+    }
+
     suspend fun disconnect() = withContext(Dispatchers.IO) {
+        // Also when the tunnel is already down (it dropped): the user has now said "off".
+        setWanted(Application.get(), false)
         val mgr = Application.getTunnelManager()
         mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }
             ?.setStateAsync(Tunnel.State.DOWN)
