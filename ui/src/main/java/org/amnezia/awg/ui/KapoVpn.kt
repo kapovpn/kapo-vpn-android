@@ -1,6 +1,9 @@
 package org.amnezia.awg.ui
 
 import android.content.Context
+import android.os.Build
+import android.provider.MediaStore
+import android.provider.MediaStore.MediaColumns
 import org.amnezia.awg.Application
 import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.config.Config
@@ -10,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.io.File
 
 /**
  * The bridge between the KAPO UI and the real AmneziaWG engine.
@@ -215,19 +219,59 @@ object KapoVpn {
      * resetting in-memory UI state (KapoState) and navigating to login.
      */
     suspend fun panicWipe(ctx: Context) = withContext(Dispatchers.IO) {
+        wipeLocalData(ctx)
+    }
+
+    /**
+     * Sign out: the same wipe as panicWipe. Logout used to clear only kapo_prefs, so the
+     * signed-out account's tunnel (KAPO.conf with the WireGuard private key, endpoint and
+     * address) stayed on the phone and the quick tile or the next app start could raise it.
+     */
+    suspend fun logout(ctx: Context) = withContext(Dispatchers.IO) {
+        wipeLocalData(ctx)
+    }
+
+    private suspend fun wipeLocalData(ctx: Context) {
         val mgr = Application.getTunnelManager()
         mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.let { tunnel ->
             try {
                 if (tunnel.state == Tunnel.State.UP) tunnel.setStateAsync(Tunnel.State.DOWN)
-                mgr.delete(tunnel)
+            } catch (_: Exception) { }
+            try {
+                mgr.delete(tunnel)   // also forgets it as the last used tunnel
             } catch (_: Exception) {
                 // Even if config deletion fails, still wipe the credential below -
                 // a stray on-disk tunnel config with no account behind it is far
                 // less sensitive than the account itself surviving a wipe.
             }
         }
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
-        Unit
+        // The file itself, in case the delete above failed or the tunnel list never loaded.
+        try {
+            File(ctx.filesDir, "$TUNNEL_NAME.conf").delete()
+        } catch (_: Exception) { }
+        // commit(), not apply(): the caller shows the login screen next, and the app may be
+        // closed right after; the wipe must be on disk by then.
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit()
+        deleteOwnDownloads(ctx)
+    }
+
+    /**
+     * Copies this app itself put in Downloads: an old "export tunnels" zip (every tunnel's
+     * private key, in plain text) and saved logs. Android 10+ only lists an app's own entries
+     * in Downloads, so nothing else the user saved is touched. Best effort: after a reinstall
+     * Android no longer counts old files as this app's, and those must be deleted by hand.
+     */
+    private fun deleteOwnDownloads(ctx: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        for (pattern in arrayOf("amneziawg-export%.zip", "amneziawg-log%.txt")) {
+            try {
+                ctx.contentResolver.delete(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    "${MediaColumns.DISPLAY_NAME} LIKE ?",
+                    arrayOf(pattern)
+                )
+            } catch (_: Exception) { }
+        }
     }
 
     suspend fun isUp(): Boolean = withContext(Dispatchers.IO) {

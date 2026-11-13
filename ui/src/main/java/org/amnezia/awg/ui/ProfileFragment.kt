@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import org.amnezia.awg.R
 import org.amnezia.awg.databinding.FragmentProfileBinding
 import org.amnezia.awg.util.SecureAccountStore
+import org.amnezia.awg.util.applicationScope
 
 class ProfileFragment : Fragment() {
 
@@ -126,12 +127,23 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnLogout.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch { KapoVpn.disconnect() }
-            KapoState.setConnected(false)
-            KapoState.resetTraffic()
-            prefs.edit().clear().apply()
-            startActivity(Intent(requireContext(), LoginActivity::class.java))
-            requireActivity().finish()
+            binding.btnLogout.isEnabled = false
+            val appCtx = requireContext().applicationContext
+            val activity = requireActivity()
+            // On the app's own scope, not this screen's: finish() below destroys the screen,
+            // which used to cancel the disconnect half-way. The wipe finishes before the
+            // login screen is shown.
+            applicationScope.launch {
+                try {
+                    KapoVpn.logout(appCtx)
+                } catch (_: Exception) {
+                    // At the very least the account goes (the app scope must not see a throw).
+                    appCtx.getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE).edit().clear().commit()
+                }
+                KapoState.panicReset()
+                activity.startActivity(Intent(appCtx, LoginActivity::class.java))
+                activity.finish()
+            }
         }
 
         loadDevices()
