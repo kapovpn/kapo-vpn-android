@@ -23,6 +23,8 @@ import org.amnezia.awg.backend.Tunnel
 import org.amnezia.awg.configStore.ConfigStore
 import org.amnezia.awg.databinding.ObservableSortedKeyedArrayList
 import org.amnezia.awg.ui.KapoVpn
+import org.amnezia.awg.ui.LicenceGate
+import org.amnezia.awg.util.LeakMonitor
 import org.amnezia.awg.util.ErrorMessages
 import org.amnezia.awg.util.UserKnobs
 import org.amnezia.awg.util.applicationScope
@@ -171,6 +173,10 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
             return
         val previouslyRunning = UserKnobs.runningTunnels.first()
         if (previouslyRunning.isEmpty()) return
+        // An update from a version that never saved "wanted": a KAPO tunnel that was running
+        // counts as wanted, so if it fails to come back the user is alerted instead of nothing.
+        if (KapoVpn.TUNNEL_NAME in previouslyRunning)
+            KapoVpn.adoptWantedOnRestore(context, wasRunning = true)
         withContext(Dispatchers.IO) {
             try {
                 tunnelMap.filter { previouslyRunning.contains(it.name) }.map { async(Dispatchers.IO + SupervisorJob()) { setTunnelState(it, Tunnel.State.UP) } }
@@ -231,6 +237,19 @@ class TunnelManager(private val configStore: ConfigStore) : BaseObservable() {
         var newState = tunnel.state
         var throwable: Throwable? = null
         try {
+            // Raising KAPO here (quick tile, boot, app start, Android's Always-on, the TV list)
+            // uses the saved config without asking the server. That is refused only after the
+            // server has said this account may not connect; a missing or late answer never
+            // blocks it (see LicenceGate).
+            if (tunnel.name == KapoVpn.TUNNEL_NAME && tunnel.state != Tunnel.State.UP &&
+                state != Tunnel.State.DOWN) {
+                val refused = KapoVpn.licenceRefusal(context)
+                if (!LicenceGate.mayRaise(refused)) {
+                    val text = KapoVpn.accountProblemText(refused!!)
+                    LeakMonitor.notifyProtectionStopped(context, text)
+                    throw IllegalStateException(text)
+                }
+            }
             newState = withContext(Dispatchers.IO) { getBackend().setState(tunnel, state, tunnel.getConfigAsync()) }
             if (newState == Tunnel.State.UP)
                 lastUsedTunnel = tunnel

@@ -22,6 +22,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.amnezia.awg.activity.SelfTestActivity
 import org.amnezia.awg.ui.KapoVpn
+import org.amnezia.awg.ui.LicenceGate
 
 /**
  * Most VPNs only check for leaks when you remember to ask (Settings ->
@@ -37,6 +38,7 @@ object LeakMonitor {
     private const val CHECK_INTERVAL_MS = 90_000L
     private const val CHANNEL_ID = "kapo_leak_alerts"
     private const val NOTIFICATION_ID = 4201
+    private const val ACCOUNT_NOTIFICATION_ID = 4202
 
     // Dedup key for the last alert fired, so an ongoing leak doesn't repost
     // a notification every single cycle - only on a new/changed failure, or
@@ -74,7 +76,15 @@ object LeakMonitor {
                 postAlert(ctx, "Tunnel is up", "")
                 return
             }
-            TunnelWatch.Action.RUN_CHECKS -> Unit
+            TunnelWatch.Action.RUN_CHECKS -> {
+                // The daily account check, also when no screen is open (Home's check only runs
+                // while Home is showing). On a clear "no" from the server it removes the tunnel
+                // and notifies by itself; no answer keeps the tunnel.
+                if (KapoVpn.recheckLicence(ctx) == LicenceGate.Recheck.REJECTED) {
+                    lastAlertKey = null
+                    return
+                }
+            }
         }
         val failed = SelfTestRunner.runAll().firstOrNull { !it.passed } ?: run {
             lastAlertKey = null   // everything passing - re-arm in case of a future leak
@@ -112,6 +122,36 @@ object LeakMonitor {
         "Tunnel is up" -> "Your KAPO tunnel dropped unexpectedly."
         "Can reach KAPO servers" -> "Can't reach KAPO's servers right now — your connection may not be fully protected."
         else -> detail
+    }
+
+    /**
+     * KAPO itself turned protection off (or refused to turn it on) because the server said the
+     * account may not connect. Never silent: this says so in a notification that opens the app.
+     */
+    fun notifyProtectionStopped(ctx: Context, body: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return   // never granted (or denied) - Home shows the same text when opened
+        ensureChannel(ctx)
+        val open = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val builder = NotificationCompat.Builder(ctx, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("KAPO VPN is off")
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            .setAutoCancel(true)
+        if (open != null) builder.setContentIntent(
+            PendingIntent.getActivity(ctx, 1, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        )
+        try {
+            NotificationManagerCompat.from(ctx).notify(ACCOUNT_NOTIFICATION_ID, builder.build())
+        } catch (_: SecurityException) {
+            // Permission revoked between the check above and here - ignore.
+        }
     }
 
     private fun postAlert(ctx: Context, title: String, detail: String) {

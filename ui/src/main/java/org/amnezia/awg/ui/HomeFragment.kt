@@ -43,10 +43,6 @@ class HomeFragment : Fragment() {
     private var panicTapCount = 0
     private var panicTapWindowStart = 0L
 
-    companion object {
-        private const val LICENSE_RECHECK_MS = 86_400_000L // once a day, per LicenseClient's own doc comment
-    }
-
     // The chain (entry..exit) the live tunnel was built with, to detect a change
     // in location or hop count and reconnect on the new route.
     private var connectedChain: List<String>? = null
@@ -57,6 +53,8 @@ class HomeFragment : Fragment() {
     // Split-tunneling selection the live tunnel was built with, ditto.
     private var connectedSplitTunnelApps: Set<String> = emptySet()
     private var connectedSplitTunnelExcluded: Boolean = true
+    // A switch is running on a tunnel that is already up (see beginInPlaceSwitch).
+    private var switchingInPlace = false
 
     // Android's one-time "allow this app to set up a VPN?" consent. When the
     // user approves, we proceed with the actual tunnel bring-up.
@@ -135,24 +133,15 @@ class HomeFragment : Fragment() {
      * closes the gap for a session that was already up before that happened.
      */
     private fun maybeRecheckLicense() {
-        val prefs = requireContext().getSharedPreferences("kapo_prefs", Context.MODE_PRIVATE)
-        val lastValidated = prefs.getLong("last_validated", 0L)
-        if (System.currentTimeMillis() - lastValidated < LICENSE_RECHECK_MS) return
-
-        val acct = account()
+        val ctx = requireContext().applicationContext
         viewLifecycleOwner.lifecycleScope.launch {
-            val res = withContext(Dispatchers.IO) { LicenseClient.validate(requireContext(), acct) }
-            if (res.status == "network_error") return@launch // stay silent, try again next tick
-            if (res.valid) {
-                prefs.edit().putLong("last_validated", System.currentTimeMillis()).putInt("days_left", res.daysLeft).apply()
-                return@launch
-            }
-            if (_binding != null) {
-                revertToDisconnected(
-                    if (res.status == "revoked") "This account has been disabled."
-                    else "Your account has expired. Add more time at kapovpn.com."
-                )
-            }
+            // KapoVpn does the check and, on a clear "no" from the server, removes the tunnel
+            // and notifies by itself (a tunnel with no screen open is handled the same way,
+            // from LeakMonitor). No answer keeps the tunnel and is tried again later.
+            val outcome = KapoVpn.recheckLicence(ctx)
+            if (_binding == null) return@launch
+            if (outcome == LicenceGate.Recheck.REJECTED)
+                revertToDisconnected(KapoVpn.accountProblemText(KapoVpn.licenceRefusal(ctx) ?: "expired"))
         }
     }
 
@@ -253,6 +242,7 @@ class HomeFragment : Fragment() {
      * onStateChanged and the hop buttons from starting a second switch meanwhile.
      */
     private fun beginInPlaceSwitch(label: String) {
+        switchingInPlace = true
         state = ConnState.CONNECTING
         handler.removeCallbacks(durationRunnable)
         binding.btnConnect.state = KapoOrbButton.State.CONNECTING
@@ -387,6 +377,8 @@ class HomeFragment : Fragment() {
         "network_error"        -> "Cannot reach the server. Check your connection."
         "node_unreachable"     -> "Server node is temporarily unavailable."
         "pool_exhausted"       -> "This location is at capacity. Try another."
+        "rate_limited"         -> "Too many tries. Please wait a minute and try again."
+        "busy"                 -> "The server is busy. Please try again shortly."
         "enroll_unconfigured"  -> "Service not ready yet. Please try again shortly."
         else                   -> "Could not connect ($status)."
     }
@@ -416,7 +408,16 @@ class HomeFragment : Fragment() {
         val includedApps = if (splitExcluded) emptySet() else splitApps
         viewLifecycleOwner.lifecycleScope.launch {
             val res = KapoVpn.connect(requireContext().applicationContext, acct, chain, adblock, adult, excludedApps, includedApps)
+            val wasSwitch = switchingInPlace
+            switchingInPlace = false
             if (_binding == null) return@launch
+            if (!res.ok && wasSwitch && !LicenceGate.isLicenceNo(fromServer = true, status = res.status) &&
+                KapoVpn.isUp()) {
+                // The switch failed but the old tunnel is still running (a busy server, no
+                // answer, ...). Keep it and show the route it really uses; don't disconnect.
+                keepPreviousRoute(enrollError(res.status))
+                return@launch
+            }
             if (res.ok) {
                 connectedChain = chain; connectedAdblock = adblock; connectedAdult = adult
                 connectedSplitTunnelApps = splitApps; connectedSplitTunnelExcluded = splitExcluded
@@ -426,6 +427,26 @@ class HomeFragment : Fragment() {
             }
             else revertToDisconnected(enrollError(res.status))
         }
+    }
+
+    /**
+     * A switch failed while the old tunnel kept running: put the screen and KapoState back to
+     * what that tunnel was built with, so what Home shows is what is really in use. Runs while
+     * state is still CONNECTING, so the KapoState changes below don't start another switch.
+     */
+    private fun keepPreviousRoute(reason: String) {
+        connectedChain?.takeIf { it.isNotEmpty() }?.let { chain ->
+            KapoState.nodeCatalog[chain.last()]?.let {
+                KapoState.setSelectedServer(it.id, it.city, it.code, it.ping, it.flag)
+            }
+            KapoState.setHopCount(chain.size)
+        }
+        KapoState.setAdBlock(connectedAdblock)
+        KapoState.setBlockAdult(connectedAdult)
+        KapoState.setSplitTunnelApps(connectedSplitTunnelApps, connectedSplitTunnelExcluded)
+        applyHopUI(KapoState.hopCount)
+        onConnected()
+        Toast.makeText(requireContext(), "$reason Still connected on the previous route.", Toast.LENGTH_LONG).show()
     }
 
     /** User picked a different location (or setting) while connected: reconnect there in place. */
@@ -526,6 +547,7 @@ class HomeFragment : Fragment() {
     private fun resetDisconnectedUi() {
         if (_binding == null) return
         state = ConnState.DISCONNECTED
+        switchingInPlace = false
         handler.removeCallbacks(durationRunnable)
         durationSeconds = 0
 

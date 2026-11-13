@@ -27,7 +27,10 @@ object LicenseClient {
         val valid: Boolean,
         val status: String,
         val daysLeft: Int,
-        val demo: Boolean = false
+        val demo: Boolean = false,
+        // True only when the status is the server's own answer. "invalid" (a malformed code)
+        // and "network_error" are decided on the phone and say nothing about the account.
+        val fromServer: Boolean = false
     )
 
     /** A stable, non-resettable-per-launch id. ANDROID_ID is fine here - it is
@@ -68,7 +71,8 @@ object LicenseClient {
             Result(
                 valid = j.optBoolean("valid", false),
                 status = j.optString("status", "error"),
-                daysLeft = j.optInt("days_left", 0)
+                daysLeft = j.optInt("days_left", 0),
+                fromServer = true
             )
         } catch (e: Exception) {
             // Network failure: don't lock a paying user out. Treat as a soft

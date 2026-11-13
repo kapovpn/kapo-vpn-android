@@ -11,6 +11,9 @@ import org.amnezia.awg.crypto.Key
 import org.amnezia.awg.crypto.KeyPair
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.util.Log
+import org.amnezia.awg.util.LeakMonitor
+import org.amnezia.awg.util.SecureAccountStore
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -33,10 +36,15 @@ object KapoVpn {
     private const val KEY_PRIV = "wg_private_key"
     private const val KEY_ENROLL = "enroll_cache"
     private const val KEY_ENROLL_AT = "enroll_cache_at"
-
-    // How long we trust the last good enrollment when the control plane is
-    // briefly unreachable, so a paying user is never locked out by a hiccup.
-    private const val GRACE_MS = 72L * 60 * 60 * 1000
+    private const val KEY_VALIDATED = "last_validated"
+    private const val KEY_DAYS_LEFT = "days_left"
+    // When the last account check was tried, answered or not (for the hourly back-off).
+    private const val KEY_CHECK_TRIED = "licence_check_tried_at"
+    // What the server said when it last refused the account; empty when it hasn't.
+    private const val KEY_REFUSED = "licence_refused"
+    private const val TAG = "KapoVpn"
+    // How long the last good enrolment is reused while the server can't be reached:
+    // LicenceGate.GRACE_MS.
 
     // Transient failures that should fall back to the grace cache.
     private val TRANSIENT = setOf(
@@ -125,6 +133,13 @@ object KapoVpn {
         val statusOut: String
         when {
             e.ok -> { saveEnroll(ctx, e); effective = e; statusOut = "ok" }
+            // EnrollClient's statuses other than network_error are the server's own answers.
+            LicenceGate.isLicenceNo(fromServer = true, status = e.status) -> {
+                // The account may not connect: stop and remove the tunnel and drop the cache,
+                // and tell the user (also when it happened during a location switch).
+                forgetTunnel(ctx, e.status)
+                return@withContext ConnectResult(false, e.status)
+            }
             e.status in TRANSIENT -> {
                 // Server/node briefly unreachable: reuse the last good enrollment
                 // if it is still within the grace window. The peer is already
@@ -134,10 +149,9 @@ object KapoVpn {
                 effective = cached; statusOut = "grace"
             }
             else -> {
-                // Definitive licence rejection (not_found/revoked/expired/
-                // device_limit): block AND drop the cache so grace can't be
-                // used to keep a revoked account online.
-                clearEnroll(ctx)
+                // Any other answer (rate_limited, busy, pool_exhausted, unknown_node, ...) fails
+                // this attempt only. A tunnel that is already up stays up, untouched.
+                Log.i(TAG, "Connect refused for now: ${e.status}")
                 return@withContext ConnectResult(false, e.status)
             }
         }
@@ -166,13 +180,15 @@ object KapoVpn {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_ENROLL, j.toString())
             .putLong(KEY_ENROLL_AT, System.currentTimeMillis())
+            .remove(KEY_REFUSED)
             .apply()
     }
 
     private fun loadFreshEnroll(ctx: Context): EnrollClient.Result? {
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val at = prefs.getLong(KEY_ENROLL_AT, 0L)
-        if (at == 0L || System.currentTimeMillis() - at > GRACE_MS) return null
+        // Also refuses a time in the future: setting the clock back used to keep the grace open.
+        if (!LicenceGate.confirmedRecently(System.currentTimeMillis(), at)) return null
         val raw = prefs.getString(KEY_ENROLL, null) ?: return null
         return try {
             val j = JSONObject(raw)
@@ -187,9 +203,75 @@ object KapoVpn {
         } catch (_: Exception) { null }
     }
 
-    private fun clearEnroll(ctx: Context) {
+    /** What the server said when it last refused this account, or null if it hasn't. */
+    fun licenceRefusal(ctx: Context): String? =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_REFUSED, null)
+            ?.takeIf { it.isNotEmpty() }
+
+    /**
+     * Check the account again while the tunnel is up: once a day (or now, with [force]), at most
+     * hourly while there is no answer. Called from Home and from LeakMonitor, so a tunnel running
+     * with no screen open is checked too. Only a clear "no" from the server stops protection
+     * (see LicenceGate); anything else keeps the tunnel and is tried again later.
+     */
+    suspend fun recheckLicence(ctx: Context, force: Boolean = false): LicenceGate.Recheck = withContext(Dispatchers.IO) {
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        if (!force && !LicenceGate.recheckDue(now, prefs.getLong(KEY_VALIDATED, 0L), prefs.getLong(KEY_CHECK_TRIED, 0L)))
+            return@withContext LicenceGate.Recheck.NOT_DUE
+        prefs.edit().putLong(KEY_CHECK_TRIED, now).apply()
+        val acct = SecureAccountStore.read(prefs)
+        if (acct.isEmpty()) {
+            // The saved account couldn't be read (a keystore problem on some phones). That is
+            // a problem on this phone, not an answer about the account: keep the tunnel.
+            Log.w(TAG, "Account check skipped: saved account could not be read")
+            return@withContext LicenceGate.Recheck.RETRY
+        }
+        val res = LicenseClient.validate(ctx, acct)
+        val outcome = LicenceGate.outcome(res.fromServer, res.valid, res.status)
+        when (outcome) {
+            LicenceGate.Recheck.OK -> prefs.edit()
+                .putLong(KEY_VALIDATED, now).putInt(KEY_DAYS_LEFT, res.daysLeft).remove(KEY_REFUSED).apply()
+            LicenceGate.Recheck.REJECTED -> forgetTunnel(ctx, res.status)
+            else -> Log.i(TAG, "Account check got no usable answer (${res.status}); keeping the tunnel")
+        }
+        outcome
+    }
+
+    /**
+     * After the server said no ([status]): tunnel down, tunnel and KAPO.conf deleted, enrolment
+     * cache and last check dropped, the answer remembered so nothing raises the tunnel again
+     * until a new connect is accepted, and a notification so the user knows protection is off.
+     * The account itself stays, so the user can renew and connect again.
+     */
+    suspend fun forgetTunnel(ctx: Context, status: String) = withContext(Dispatchers.IO) {
+        setWanted(ctx, false)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .remove(KEY_ENROLL).remove(KEY_ENROLL_AT).apply()
+            .putString(KEY_REFUSED, status).commit()
+        val mgr = Application.getTunnelManager()
+        mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.let { tunnel ->
+            try {
+                if (tunnel.state == Tunnel.State.UP) tunnel.setStateAsync(Tunnel.State.DOWN)
+            } catch (_: Exception) { }
+            try {
+                mgr.delete(tunnel)
+            } catch (_: Exception) { }
+        }
+        try {
+            File(ctx.filesDir, "$TUNNEL_NAME.conf").delete()
+        } catch (_: Exception) { }
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(KEY_ENROLL).remove(KEY_ENROLL_AT).remove(KEY_VALIDATED).commit()
+        LeakMonitor.notifyProtectionStopped(ctx, accountProblemText(status))
+        Unit
+    }
+
+    /** Plain words for a refusal, for the notification and the Home screen. */
+    fun accountProblemText(status: String): String = when (status) {
+        "device_limit" -> "KAPO VPN is off: this account is already used on its maximum number of devices."
+        "revoked" -> "KAPO VPN is off: this account has been disabled."
+        "not_found" -> "KAPO VPN is off: this account was not found."
+        else -> "KAPO VPN is off: your account has expired. Add more time at kapovpn.com."
     }
 
     fun isWanted(ctx: Context): Boolean =
@@ -197,6 +279,13 @@ object KapoVpn {
 
     fun setWanted(ctx: Context, wanted: Boolean) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_WANTED, wanted).apply()
+    }
+
+    /** At a restore: fill in "wanted" when an older version never saved it (LicenceGate.wantedOnRestore). */
+    fun adoptWantedOnRestore(ctx: Context, wasRunning: Boolean) {
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val stored = if (prefs.contains(KEY_WANTED)) prefs.getBoolean(KEY_WANTED, false) else null
+        if (stored == null) setWanted(ctx, LicenceGate.wantedOnRestore(null, wasRunning))
     }
 
     suspend fun disconnect() = withContext(Dispatchers.IO) {
