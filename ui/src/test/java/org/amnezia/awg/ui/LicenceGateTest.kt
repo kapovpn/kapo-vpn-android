@@ -51,6 +51,28 @@ class LicenceGateTest {
     }
 
     @Test
+    fun paidTimeEndedStopsProtection() {
+        // valid=false with an active status means the paid time has ended.
+        assertEquals(Recheck.REJECTED, LicenceGate.outcome(fromServer = true, valid = false, status = "active"))
+        assertEquals("expired", LicenceGate.checkStatus(fromServer = true, valid = false, status = "active"))
+    }
+
+    @Test
+    fun aReplyWithNoStatusStaysTryLater() {
+        // "Too many tries" comes back with no status, which LicenseClient reads as "error".
+        assertEquals(Recheck.RETRY, LicenceGate.outcome(fromServer = true, valid = false, status = "error"))
+        assertEquals("error", LicenceGate.checkStatus(fromServer = true, valid = false, status = "error"))
+    }
+
+    @Test
+    fun aValidActiveAccountKeepsTheTunnel() {
+        assertEquals(Recheck.OK, LicenceGate.outcome(fromServer = true, valid = true, status = "active"))
+        assertEquals("active", LicenceGate.checkStatus(fromServer = true, valid = true, status = "active"))
+        // Not from the server: never turned into "expired".
+        assertEquals(Recheck.RETRY, LicenceGate.outcome(fromServer = false, valid = false, status = "active"))
+    }
+
+    @Test
     fun unreachableKeepsTheTunnel() {
         // Offline, a timeout, an outage or a blocked server: LicenseClient's network_error.
         assertEquals(Recheck.RETRY, LicenceGate.outcome(fromServer = false, valid = false, status = "network_error"))

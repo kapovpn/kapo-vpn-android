@@ -232,7 +232,8 @@ object KapoVpn {
         when (outcome) {
             LicenceGate.Recheck.OK -> prefs.edit()
                 .putLong(KEY_VALIDATED, now).putInt(KEY_DAYS_LEFT, res.daysLeft).remove(KEY_REFUSED).apply()
-            LicenceGate.Recheck.REJECTED -> forgetTunnel(ctx, res.status)
+            LicenceGate.Recheck.REJECTED ->
+                forgetTunnel(ctx, LicenceGate.checkStatus(res.fromServer, res.valid, res.status))
             else -> Log.i(TAG, "Account check got no usable answer (${res.status}); keeping the tunnel")
         }
         outcome

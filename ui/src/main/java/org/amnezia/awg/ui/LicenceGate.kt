@@ -55,10 +55,18 @@ object LicenceGate {
         !confirmedRecently(now, lastValidated, RECHECK_MS) &&
             !confirmedRecently(now, lastAttempt, RETRY_MS)
 
+    /**
+     * The account status a check's answer stands for. valid=false with an active status means
+     * the paid time has ended: that is "expired". A reply with no status (read as "error", such
+     * as "too many tries") is left as it is and stays "try later".
+     */
+    fun checkStatus(fromServer: Boolean, valid: Boolean, status: String): String =
+        if (fromServer && !valid && status == "active") "expired" else status
+
     /** What a check's answer means for a tunnel that is up. */
     fun outcome(fromServer: Boolean, valid: Boolean, status: String): Recheck = when {
         valid -> Recheck.OK
-        isLicenceNo(fromServer, status) -> Recheck.REJECTED
+        isLicenceNo(fromServer, checkStatus(fromServer, valid, status)) -> Recheck.REJECTED
         else -> Recheck.RETRY
     }
 
