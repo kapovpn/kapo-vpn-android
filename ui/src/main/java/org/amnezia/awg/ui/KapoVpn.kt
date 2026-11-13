@@ -241,15 +241,19 @@ object KapoVpn {
     /**
      * After the server said no ([status]): tunnel down, tunnel and KAPO.conf deleted, enrolment
      * cache and last check dropped, the answer remembered so nothing raises the tunnel again
-     * until a new connect is accepted, and a notification so the user knows protection is off.
+     * until a new connect is accepted, and, if protection was on, a notification saying it is
+     * now off. (A first connect that is refused shows its reason on Home instead.)
      * The account itself stays, so the user can renew and connect again.
      */
     suspend fun forgetTunnel(ctx: Context, status: String) = withContext(Dispatchers.IO) {
+        val mgr = Application.getTunnelManager()
+        val existing = mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }
+        // Protection was on (or meant to be): then this really turns it off, and says so.
+        val wasOn = isWanted(ctx) || existing?.state == Tunnel.State.UP
         setWanted(ctx, false)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_REFUSED, status).commit()
-        val mgr = Application.getTunnelManager()
-        mgr.getTunnels().firstOrNull { it.name == TUNNEL_NAME }?.let { tunnel ->
+        existing?.let { tunnel ->
             try {
                 if (tunnel.state == Tunnel.State.UP) tunnel.setStateAsync(Tunnel.State.DOWN)
             } catch (_: Exception) { }
@@ -262,7 +266,7 @@ object KapoVpn {
         } catch (_: Exception) { }
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .remove(KEY_ENROLL).remove(KEY_ENROLL_AT).remove(KEY_VALIDATED).commit()
-        LeakMonitor.notifyProtectionStopped(ctx, accountProblemText(status))
+        if (wasOn) LeakMonitor.notifyProtectionStopped(ctx, accountProblemText(status))
         Unit
     }
 
