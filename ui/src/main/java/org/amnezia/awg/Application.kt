@@ -82,6 +82,9 @@ class Application : android.app.Application() {
         if (backend == null) {
             backend = GoBackend(applicationContext)
             GoBackend.setAlwaysOnCallback { get().applicationScope.launch { get().tunnelManager.restoreState(true) } }
+            // Switched off in Android's VPN settings or replaced by another VPN app: the user's
+            // choice, so no "dropped unexpectedly" alert for it.
+            GoBackend.setRevokeCallback { org.amnezia.awg.ui.KapoVpn.setWanted(get(), false) }
         }
         return backend
     }

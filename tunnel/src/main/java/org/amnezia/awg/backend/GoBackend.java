@@ -86,6 +86,16 @@ public final class GoBackend implements Backend {
         alwaysOnCallback = cb;
     }
 
+    @Nullable private static volatile Runnable revokeCallback;
+
+    /**
+     * Set a callback for when Android revokes the VPN: the user switched it off in Android's VPN
+     * settings, or started another VPN app. That is a choice, not a drop.
+     */
+    public static void setRevokeCallback(@Nullable final Runnable cb) {
+        revokeCallback = cb;
+    }
+
 
 
     /**
@@ -533,18 +543,28 @@ public final class GoBackend implements Backend {
         }
 
         if (newHandle < 0) {
-            // The old handle is off and the new tun is closed: no tunnel now. This is a real
-            // DOWN and is told as one, so the app (Home, the leak monitor) can show and alert it.
-            Log.e(TAG, "New tunnel failed to start (" + newHandle + ")", startError);
+            // The old handle is off and the new tun is closed, so there is no tun now. Build
+            // afresh on the config that was running. Rare: with a spare hold this only comes
+            // after that config also failed on the new tun.
+            Log.e(TAG, "New tunnel failed to start (" + newHandle + "); building the old config afresh", startError);
             currentTunnel = null;
             currentConfig = null;
-            try {
-                service.stopSelf();
-            } catch (final RuntimeException ignored) { }
-            tunnel.onStateChange(State.DOWN);
             final BackendException failure = new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, newHandle);
             if (startError != null)
                 failure.initCause(startError);
+            try {
+                if (originalConfig == null)
+                    throw new BackendException(Reason.TUNNEL_MISSING_CONFIG);
+                setStateInternal(tunnel, originalConfig, State.UP);
+            } catch (final Exception e) {
+                Log.e(TAG, "Going back to the old config failed too", e);
+                // Nothing runs now: a real DOWN, told as one, so the app (Home, the leak
+                // monitor) can show and alert it.
+                try {
+                    service.stopSelf();
+                } catch (final RuntimeException ignored) { }
+                tunnel.onStateChange(State.DOWN);
+            }
             throw failure;
         }
 
@@ -733,6 +753,19 @@ public final class GoBackend implements Backend {
         }
 
         @Override
+        public void onRevoke() {
+            final Runnable cb = revokeCallback;
+            if (cb != null) {
+                try {
+                    cb.run();
+                } catch (final RuntimeException e) {
+                    Log.w(TAG, "Revoke callback failed", e);
+                }
+            }
+            super.onRevoke();
+        }
+
+        @Override
         public void onDestroy() {
             if (owner != null) {
                 Tunnel tunnel;
@@ -748,11 +781,15 @@ public final class GoBackend implements Backend {
                         if (handle != -1)
                             awgTurnOff(handle);
                     }
+                    // Inside the lock: a turn-on waiting for it must not still see this dying
+                    // service as the running one.
+                    vpnService = vpnService.newIncompleteFuture();
                 }
                 if (tunnel != null)
                     tunnel.onStateChange(State.DOWN);
+            } else {
+                vpnService = vpnService.newIncompleteFuture();
             }
-            vpnService = vpnService.newIncompleteFuture();
             super.onDestroy();
         }
 
