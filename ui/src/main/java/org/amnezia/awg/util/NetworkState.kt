@@ -79,6 +79,16 @@ class NetworkState(
             }
 
             private fun checkNetworkState(network: Network, networkCapabilities: NetworkCapabilities) {
+                // Below Android 12 this callback hears about every matching network, so with
+                // Wi-Fi and mobile data both on they take turns and each turn looked like a
+                // change, and every "change" reconnected the tunnel. Android uses a working
+                // Wi-Fi over mobile data, so ignore mobile data while one is there.
+                if (isBackupNetwork(
+                        Build.VERSION.SDK_INT,
+                        networkCapabilities.hasTransport(TRANSPORT_CELLULAR),
+                        validatedWifiElsewhere(network)
+                    )
+                ) return
                 val newNetworkType = getNetworkType(networkCapabilities)
                 val isValidated = networkCapabilities.hasCapability(NET_CAPABILITY_VALIDATED)
 
@@ -132,6 +142,14 @@ class NetworkState(
                     }
                 }
             }
+
+            @Suppress("DEPRECATION")
+            private fun validatedWifiElsewhere(network: Network): Boolean =
+                connectivityManager.allNetworks.any { other ->
+                    val caps = if (other == network) null else connectivityManager.getNetworkCapabilities(other)
+                    caps != null && caps.hasTransport(TRANSPORT_WIFI) &&
+                        caps.hasCapability(NET_CAPABILITY_INTERNET) && caps.hasCapability(NET_CAPABILITY_VALIDATED)
+                }
 
             private fun getNetworkType(capabilities: NetworkCapabilities): NetworkType {
                 return when {
@@ -236,5 +254,16 @@ class NetworkState(
     fun getCurrentNetworkType(): NetworkType = currentNetworkType
 
     fun isConnected(): Boolean = validated && currentNetworkType != NetworkType.NONE
+
+    companion object {
+        /**
+         * Whether a callback is for the mobile network kept up beside a working Wi-Fi, which
+         * Android isn't using. Android 12+ registers registerBestMatchingNetworkCallback, which
+         * only ever reports the one network in use, so nothing needs ignoring there.
+         */
+        @JvmStatic
+        fun isBackupNetwork(sdkInt: Int, isCellular: Boolean, validatedWifiElsewhere: Boolean): Boolean =
+            sdkInt < Build.VERSION_CODES.S && isCellular && validatedWifiElsewhere
+    }
 }
 
