@@ -7,6 +7,7 @@ package org.amnezia.awg.backend;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.system.OsConstants;
@@ -376,11 +377,26 @@ public final class GoBackend implements Backend {
             final VpnService.Builder builder = service.getBuilder();
             builder.setSession(tunnel.getName());
 
-            for (final String excludedApplication : config.getInterface().getExcludedApplications())
-                builder.addDisallowedApplication(excludedApplication);
+            // A split-tunnel app uninstalled since the config was saved makes these throw,
+            // which used to stop the tunnel coming up at all (and on a reconnect, left it
+            // silently down). Skipping it only ever puts more traffic inside the tunnel,
+            // never less: a missing excluded app has nothing to exclude, and a missing
+            // included app just isn't added. The package name is deliberately not logged.
+            for (final String excludedApplication : config.getInterface().getExcludedApplications()) {
+                try {
+                    builder.addDisallowedApplication(excludedApplication);
+                } catch (final PackageManager.NameNotFoundException e) {
+                    Log.w(TAG, "Skipping an excluded app that is no longer installed");
+                }
+            }
 
-            for (final String includedApplication : config.getInterface().getIncludedApplications())
-                builder.addAllowedApplication(includedApplication);
+            for (final String includedApplication : config.getInterface().getIncludedApplications()) {
+                try {
+                    builder.addAllowedApplication(includedApplication);
+                } catch (final PackageManager.NameNotFoundException e) {
+                    Log.w(TAG, "Skipping an included app that is no longer installed");
+                }
+            }
 
             for (final InetNetwork addr : config.getInterface().getAddresses())
                 builder.addAddress(addr.getAddress(), addr.getMask());
