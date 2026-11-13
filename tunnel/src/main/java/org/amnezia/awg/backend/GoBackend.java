@@ -49,9 +49,20 @@ public final class GoBackend implements Backend {
     @Nullable private static AlwaysOnCallback alwaysOnCallback;
     private static GhettoCompletableFuture<VpnService> vpnService = new GhettoCompletableFuture<>();
     private final Context context;
-    @Nullable private Config currentConfig;
-    @Nullable private Tunnel currentTunnel;
-    private int currentTunnelHandle = -1;
+    // Read without a lock by getState/getStatistics/getLastHandshake and the status job,
+    // so volatile: a reader sees a teardown's -1 at once, never a stale handle.
+    @Nullable private volatile Config currentConfig;
+    @Nullable private volatile Tunnel currentTunnel;
+    private volatile int currentTunnelHandle = -1;
+    // One state change at a time. Callers (network change, connect, a location switch, the
+    // Quick Settings tile, the restore at start-up) each run on their own IO thread, and two
+    // UPs used to both pass the "already up" check, both turn awg on, and leave one handle
+    // running that nothing owned or ever turned off.
+    private final Object setStateLock = new Object();
+    // Held only while the awg handle and the fields above change hands, and by the service's
+    // onDestroy (main thread), so a teardown from Android can't interleave with a turn-on.
+    // Never held across anything slow (DNS, waiting for the service, establish()).
+    private final Object stateLock = new Object();
     @Nullable private Thread statusThread;
     @Nullable private StatusCallback statusCallback;
 
@@ -84,9 +95,10 @@ public final class GoBackend implements Backend {
      */
     @Override
     public Set<String> getRunningTunnelNames() {
-        if (currentTunnel != null) {
+        final Tunnel tunnel = currentTunnel;
+        if (tunnel != null) {
             final Set<String> runningTunnels = new ArraySet<>();
-            runningTunnels.add(currentTunnel.getName());
+            runningTunnels.add(tunnel.getName());
             return runningTunnels;
         }
         return Collections.emptySet();
@@ -112,9 +124,10 @@ public final class GoBackend implements Backend {
     @Override
     public Statistics getStatistics(final Tunnel tunnel) {
         final Statistics stats = new Statistics();
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        final int handle = currentTunnelHandle;
+        if (tunnel != currentTunnel || handle == -1)
             return stats;
-        final String config = awgGetConfig(currentTunnelHandle);
+        final String config = awgGetConfig(handle);
         if (config == null)
             return stats;
         Key key = null;
@@ -181,9 +194,10 @@ public final class GoBackend implements Backend {
      */
     @Override
     public long getLastHandshake(final Tunnel tunnel) {
-        if (tunnel != currentTunnel || currentTunnelHandle == -1)
+        final int handle = currentTunnelHandle;
+        if (tunnel != currentTunnel || handle == -1)
             return -3; // Tunnel not active
-        final String config = awgGetConfig(currentTunnelHandle);
+        final String config = awgGetConfig(handle);
         if (config == null) {
             Log.e(TAG, "Failed to get tunnel config");
             return -2;
@@ -296,6 +310,12 @@ public final class GoBackend implements Backend {
      */
     @Override
     public State setState(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
+        synchronized (setStateLock) {
+            return setStateLocked(tunnel, state, config);
+        }
+    }
+
+    private State setStateLocked(final Tunnel tunnel, State state, @Nullable final Config config) throws Exception {
         final State originalState = getState(tunnel);
 
         if (state == State.TOGGLE)
@@ -434,16 +454,22 @@ public final class GoBackend implements Backend {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
                 Log.d(TAG, "Go backend " + awgVersion());
-                currentTunnelHandle = awgTurnOn(tunnel.getName(), tun.detachFd(), goConfig);
+                synchronized (stateLock) {
+                    // Android destroyed the service while this was building (another VPN took
+                    // over, or KAPO was switched off in Android's settings): nothing to attach
+                    // the tunnel to. The new tun closes with the try-with-resources.
+                    if (!vpnService.isDone() || vpnService.get(0, TimeUnit.NANOSECONDS) != service)
+                        throw new BackendException(Reason.UNABLE_TO_START_VPN);
+                    final int handle = awgTurnOn(tunnel.getName(), tun.detachFd(), goConfig);
+                    if (handle < 0)
+                        throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, handle);
+                    currentTunnelHandle = handle;
+                    currentTunnel = tunnel;
+                    currentConfig = config;
+                    service.protect(awgGetSocketV4(handle));
+                    service.protect(awgGetSocketV6(handle));
+                }
             }
-            if (currentTunnelHandle < 0)
-                throw new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, currentTunnelHandle);
-
-            currentTunnel = tunnel;
-            currentConfig = config;
-
-            service.protect(awgGetSocketV4(currentTunnelHandle));
-            service.protect(awgGetSocketV6(currentTunnelHandle));
 
             launchStatusJob();
         } else {
@@ -452,11 +478,14 @@ public final class GoBackend implements Backend {
                 return;
             }
             stopStatusJob();
-            int handleToClose = currentTunnelHandle;
-            currentTunnel = null;
-            currentTunnelHandle = -1;
-            currentConfig = null;
-            awgTurnOff(handleToClose);
+            synchronized (stateLock) {
+                final int handleToClose = currentTunnelHandle;
+                currentTunnel = null;
+                currentTunnelHandle = -1;
+                currentConfig = null;
+                if (handleToClose != -1)
+                    awgTurnOff(handleToClose);
+            }
             try {
                 vpnService.get(0, TimeUnit.NANOSECONDS).stopSelf();
             } catch (final TimeoutException ignored) { }
@@ -521,15 +550,22 @@ public final class GoBackend implements Backend {
         @Override
         public void onDestroy() {
             if (owner != null) {
-                final Tunnel tunnel = owner.currentTunnel;
-                if (tunnel != null) {
-                    if (owner.currentTunnelHandle != -1)
-                        awgTurnOff(owner.currentTunnelHandle);
-                    owner.currentTunnel = null;
-                    owner.currentTunnelHandle = -1;
-                    owner.currentConfig = null;
-                    tunnel.onStateChange(State.DOWN);
+                Tunnel tunnel;
+                // Not in the middle of a turn-on: that would leave its new handle running with
+                // nobody owning it. Only the few milliseconds of a handle change are ever held.
+                synchronized (owner.stateLock) {
+                    tunnel = owner.currentTunnel;
+                    if (tunnel != null) {
+                        final int handle = owner.currentTunnelHandle;
+                        owner.currentTunnel = null;
+                        owner.currentTunnelHandle = -1;
+                        owner.currentConfig = null;
+                        if (handle != -1)
+                            awgTurnOff(handle);
+                    }
                 }
+                if (tunnel != null)
+                    tunnel.onStateChange(State.DOWN);
             }
             vpnService = vpnService.newIncompleteFuture();
             super.onDestroy();
