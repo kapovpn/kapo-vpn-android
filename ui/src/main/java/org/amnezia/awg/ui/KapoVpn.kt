@@ -275,9 +275,7 @@ object KapoVpn {
         if (wasOn) {
             val hint = LicenceGate.renewHint(status, blockOn)
             LeakMonitor.notifyProtectionStopped(ctx,
-                if (hint == null) accountProblemText(status) else accountProblemText(status) + "
-
-" + hint)
+                if (hint == null) accountProblemText(status) else accountProblemText(status) + "\n\n" + hint)
         }
         Unit
     }
