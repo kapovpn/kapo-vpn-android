@@ -57,10 +57,9 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnCopyAccount.setOnClickListener {
-            val cb = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cb.setPrimaryClip(ClipData.newPlainText("account", display))
+            copyAccount(display)
             binding.btnCopyAccount.text = "COPIED!"
-            binding.root.postDelayed({ binding.btnCopyAccount.text = "COPY ACCOUNT NUMBER" }, 2000)
+            binding.root.postDelayed({ _binding?.btnCopyAccount?.text = "COPY ACCOUNT NUMBER" }, 2000)
         }
 
         // Notifications live here now; the NEW tag and the nav dot both clear
@@ -100,12 +99,30 @@ class ProfileFragment : Fragment() {
                 else "Expires: " + fmt.format(java.util.Date(expiryMillis))
         }
 
-        // Add time / renew: open the crypto checkout pre-filled with this code.
+        // Add time / renew: open the checkout WITHOUT the code. A code in the link
+        // reached whichever app opened it (browser history, synced tabs, another app that
+        // claims https links, the web server's logs), where Sign out and the panic wipe
+        // can't clear it. The page asks for the code; offer to copy it first.
         binding.btnAddTime.setOnClickListener {
-            val url = if (account.isNotEmpty())
-                "https://kapovpn.com/account.html?code=$account"
-            else "https://kapovpn.com/account.html"
-            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            val url = AddTimeLink.URL
+            if (account.isEmpty()) {
+                openAddTime(url)
+                return@setOnClickListener
+            }
+            val themed = android.view.ContextThemeWrapper(requireContext(), R.style.ThemeOverlay_KapoVPN_MaterialDialog)
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(themed)
+                .setTitle("Add time")
+                .setMessage(
+                    "This opens kapovpn.com in your browser. The page asks for your account number: " +
+                    "copy it now and paste it there. Clear it from your clipboard when you're done."
+                )
+                .setPositiveButton("Copy and open") { _, _ ->
+                    copyAccount(account)
+                    openAddTime(url)
+                }
+                .setNeutralButton("Just open") { _, _ -> openAddTime(url) }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         binding.btnLogout.setOnClickListener {
@@ -118,6 +135,24 @@ class ProfileFragment : Fragment() {
         }
 
         loadDevices()
+    }
+
+    private fun openAddTime(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (_: android.content.ActivityNotFoundException) {
+            Toast.makeText(requireContext(), "No browser found. Open $url", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun copyAccount(code: String) {
+        val cb = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        // The code is the whole credential: keep it out of Android 13+'s clipboard preview.
+        val clip = ClipData.newPlainText("account", code)
+        clip.description.extras = android.os.PersistableBundle().apply {
+            putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+        }
+        cb.setPrimaryClip(clip)
     }
 
     override fun onResume() {
