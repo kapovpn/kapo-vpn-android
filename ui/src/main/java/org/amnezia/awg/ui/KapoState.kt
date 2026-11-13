@@ -1,5 +1,7 @@
 package org.amnezia.awg.ui
 
+import android.content.SharedPreferences
+
 /**
  * Single source of truth for anything more than one screen needs to agree on.
  *
@@ -60,10 +62,30 @@ object KapoState {
     var splitTunnelApps: Set<String> = emptySet(); private set
     var splitTunnelExcluded: Boolean = true; private set
 
+    // The split-tunnel choice is baked into the saved tunnel config, which comes back up after
+    // the app process restarts. It used to live only here in memory, so after a restart the
+    // screens said "All apps use the tunnel" while the running tunnel still left apps out (or
+    // only let a few in), and the next reconnect silently dropped the choice. Now it is saved
+    // too (in kapo_prefs, which the panic wipe and logout clear) and read back at app start.
+    private const val KEY_SPLIT_APPS = "split_tunnel_apps"
+    private const val KEY_SPLIT_EXCLUDED = "split_tunnel_excluded"
+    private var store: SharedPreferences? = null
+
+    /** Read the saved split-tunnel choice and keep saving it. Called once at app start. */
+    fun attachStore(prefs: SharedPreferences) {
+        store = prefs
+        splitTunnelApps = prefs.getStringSet(KEY_SPLIT_APPS, null)?.toSet() ?: emptySet()
+        splitTunnelExcluded = prefs.getBoolean(KEY_SPLIT_EXCLUDED, true)
+    }
+
     fun setSplitTunnelApps(apps: Set<String>, excluded: Boolean) {
         if (splitTunnelApps == apps && splitTunnelExcluded == excluded) return
         splitTunnelApps = apps
         splitTunnelExcluded = excluded
+        store?.edit()
+            ?.putStringSet(KEY_SPLIT_APPS, HashSet(apps))
+            ?.putBoolean(KEY_SPLIT_EXCLUDED, excluded)
+            ?.apply()
         notifyChanged()
     }
 

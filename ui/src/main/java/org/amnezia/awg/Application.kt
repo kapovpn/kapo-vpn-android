@@ -90,6 +90,8 @@ class Application : android.app.Application() {
         Log.i(TAG, USER_AGENT)
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)
+        // Before any screen or the tunnel restore reads the split-tunnel choice.
+        org.amnezia.awg.ui.KapoState.attachStore(getSharedPreferences("kapo_prefs", MODE_PRIVATE))
         rootShell = RootShell(applicationContext)
         toolsInstaller = ToolsInstaller(applicationContext, rootShell)
         preferencesDataStore = PreferenceDataStoreFactory.create { applicationContext.preferencesDataStoreFile("settings") }
