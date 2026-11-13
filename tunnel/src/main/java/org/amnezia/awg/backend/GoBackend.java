@@ -480,13 +480,46 @@ public final class GoBackend implements Backend {
         final ParcelFileDescriptor tun = builder.establish();
         if (tun == null)
             throw new BackendException(Reason.TUN_CREATION_ERROR);
+        FreshStartNeeded fresh = null;
         try {
             synchronized (stateLock) {
                 swapHandles(service, tunnel, config, goConfig, tun);
             }
+        } catch (final FreshStartNeeded e) {
+            fresh = e;
         } finally {
             // Does nothing once the fd was handed to Go (detachFd()): it is for a throw before it.
             tun.close();
+        }
+        if (fresh == null)
+            return;
+        // No tun now: build the config that was running afresh. Outside stateLock, because this
+        // looks up DNS and calls establish(), which onDestroy (main thread) must not wait on.
+        try {
+            if (fresh.config == null)
+                throw new BackendException(Reason.TUNNEL_MISSING_CONFIG);
+            setStateInternal(tunnel, fresh.config, State.UP);
+        } catch (final Exception e) {
+            Log.e(TAG, "Going back to the old config failed too", e);
+            // Nothing runs now: a real DOWN, told as one, so the app (Home, the leak monitor)
+            // can show and alert it.
+            try {
+                service.stopSelf();
+            } catch (final RuntimeException ignored) { }
+            tunnel.onStateChange(State.DOWN);
+        }
+        throw fresh.failure;
+    }
+
+    /** From {@link #swapHandles}: no tunnel is left, and {@code config} must be started afresh. */
+    private static final class FreshStartNeeded extends Exception {
+        @Nullable final Config config;
+        final BackendException failure;
+
+        FreshStartNeeded(@Nullable final Config config, final BackendException failure) {
+            super(failure);
+            this.config = config;
+            this.failure = failure;
         }
     }
 
@@ -552,20 +585,8 @@ public final class GoBackend implements Backend {
             final BackendException failure = new BackendException(Reason.GO_ACTIVATION_ERROR_CODE, newHandle);
             if (startError != null)
                 failure.initCause(startError);
-            try {
-                if (originalConfig == null)
-                    throw new BackendException(Reason.TUNNEL_MISSING_CONFIG);
-                setStateInternal(tunnel, originalConfig, State.UP);
-            } catch (final Exception e) {
-                Log.e(TAG, "Going back to the old config failed too", e);
-                // Nothing runs now: a real DOWN, told as one, so the app (Home, the leak
-                // monitor) can show and alert it.
-                try {
-                    service.stopSelf();
-                } catch (final RuntimeException ignored) { }
-                tunnel.onStateChange(State.DOWN);
-            }
-            throw failure;
+            // rebuildInPlace starts it afresh once stateLock is released.
+            throw new FreshStartNeeded(originalConfig, failure);
         }
 
         currentTunnelHandle = newHandle;
